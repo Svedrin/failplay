@@ -3,13 +3,18 @@
 
 from time import time
 
+from PyQt4 import QtCore
+
 import audioop
 import ao
 import audioread
 
 
-class Source(object):
+class Source(QtCore.QObject):
+    sig_start  = QtCore.SIGNAL( 'start(const QString)' )
+
     def __init__(self, path):
+        QtCore.QObject.__init__(self)
         self.starttime = None
         self.path  = path
         self.fd    = audioread.audio_open(path)
@@ -17,6 +22,7 @@ class Source(object):
 
     def start(self):
         self.starttime = time()
+        self.emit( Source.sig_start, self.path )
 
     @property
     def duration(self):
@@ -33,9 +39,15 @@ class Source(object):
         return self.gen
 
 
+class Player(QtCore.QObject):
+    sig_transition_start = QtCore.SIGNAL( 'transition_start(const QString, const QString)' )
+    sig_transition_end   = QtCore.SIGNAL( 'transition_start(const QString, const QString)' )
 
-class Player(object):
+    sig_position_normal  = QtCore.SIGNAL( 'position_normal(const QString, const float)' )
+    sig_position_trans   = QtCore.SIGNAL( 'position_trans(const QString, const float, const QString, const float)' )
+
     def __init__(self, pcm, source):
+        QtCore.QObject.__init__(self)
         self.pcm = pcm
         self.next   = None
         self.source = source
@@ -58,6 +70,7 @@ class Player(object):
 
             if prev is None:
                 self.pcm.play( srcdata )
+                self.emit(Player.sig_position_normal, self.source.path, self.source.pos)
 
                 if self.next is not None and self.source.duration - self.source.pos <= transtime:
                     print "Entering transition!"
@@ -65,32 +78,37 @@ class Player(object):
                     self.source = self.next
                     self.next = None
                     self.source.start()
+                    self.emit(Player.sig_transition_start, prev.path, self.source.path)
 
             else:
                 try:
                     prevdata = prev.data.next()
                 except StopIteration:
                     print "Old source done, leaving transition!"
+                    self.emit(Player.sig_transition_end, prev.path, self.source.path)
                     prev = None
                     self.pcm.play( srcdata )
+                    self.emit(Player.sig_position_normal, self.source.path, self.source.pos)
                 else:
                     fac = max( (prev.duration - prev.pos), 0 ) / transtime
+                    self.emit(Player.sig_position_trans, self.source.path, self.source.pos, prev.path, prev.pos)
                     if len(prevdata) < len(srcdata):
-                        # The last sample may be too short, causing audioop some pain. Screw it, then.
+                        # The last chunk may be too short, causing audioop some pain. Screw it, then.
                         self.pcm.play( audioop.mul( srcdata, 2, 1 - fac ) )
                     else:
                         sample = audioop.add( audioop.mul( prevdata, 2, fac ), audioop.mul( srcdata, 2, 1 - fac ), 2 )
                         self.pcm.play( sample )
 
-pcm = ao.AudioDevice("pulse")
+if __name__ == '__main__':
+    pcm = ao.AudioDevice("pulse")
 
-first = Source("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 02 - Dreamscape.flac")
-last  = Source("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 10 - Stardust.flac")
+    first = Source("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 02 - Dreamscape.flac")
+    last  = Source("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 10 - Stardust.flac")
 
-#first = Source("/tmp/eins.mp3")
-#last  = Source("/tmp/zwei.mp3")
+    #first = Source("/tmp/eins.mp3")
+    #last  = Source("/tmp/zwei.mp3")
 
-eternity = Player(pcm, first)
-eternity.enqueue(last)
-eternity.play()
+    eternity = Player(pcm, first)
+    eternity.enqueue(last)
+    eternity.play()
 
