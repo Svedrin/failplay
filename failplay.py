@@ -146,7 +146,8 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             if idx == self.playlist.repeat:
                 modifiers.append( u'♻' )
             if idx == self.playlist.stopafter:
-                modifiers.append( u'▅' )
+                # http://www.decodeunicode.org/de/geometric_shapes
+                modifiers.append( u'◾' ) #■◾◼
             if modifiers:
                 display += " [%s]" % ''.join(modifiers)
             item.setData(Qt.Qt.DisplayRole, display)
