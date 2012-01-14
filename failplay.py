@@ -13,7 +13,7 @@ from failaudio   import Playlist, Player
 from ui_failplay import Ui_MainWindow
 
 class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
-    def __init__(self, outdev):
+    def __init__(self, outdev, librarydir=os.environ["HOME"]):
         QtGui.QMainWindow.__init__(self)
         Ui_MainWindow.__init__(self)
 
@@ -34,6 +34,13 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.connect( self.player,           Player.sig_position_normal,     self.status_update_normal )
         self.connect( self.player,           Player.sig_position_trans,      self.status_update_trans  )
 
+        self.connect( self.lstLibrary, QtCore.SIGNAL("itemDoubleClicked(QListWidgetItem *)"), self.append )
+
+        # build playlist context menu
+        self.actRemove = QtGui.QAction("Remove", self.lstPlaylist)
+        self.connect( self.actRemove, QtCore.SIGNAL("triggered(bool)"), self.remove)
+        self.lstPlaylist.insertAction(None, self.actRemove)
+
         self.actEnqueue = QtGui.QAction("Enqueue", self.lstPlaylist)
         self.connect( self.actEnqueue, QtCore.SIGNAL("triggered(bool)"), self.enqueue)
         self.lstPlaylist.insertAction(None, self.actEnqueue)
@@ -49,6 +56,17 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.actStopAfter = QtGui.QAction("Stop after this track", self.lstPlaylist)
         self.connect( self.actStopAfter, QtCore.SIGNAL("triggered(bool)"), self.stopafter)
         self.lstPlaylist.insertAction(None, self.actStopAfter)
+
+        # populate library list
+        musicfiles = os.listdir(librarydir)
+        musicfiles.sort()
+        for fname in musicfiles:
+            path = os.path.join(librarydir, fname)
+            if os.path.isfile(path):
+                item = QtGui.QListWidgetItem()
+                item.setData(Qt.Qt.DisplayRole, fname)
+                item.setData(Qt.Qt.UserRole, path)
+                self.lstLibrary.addItem(item)
 
         self.show()
 
@@ -66,6 +84,14 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
     def start(self):
         self.player.start()
+
+    def append(self, item):
+        path = item.data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
+        self.playlist.append( path )
+
+    def remove(self):
+        path = self.lstPlaylist.currentItem().data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
+        self.playlist.remove(path)
 
     def enqueue(self):
         path = self.lstPlaylist.currentItem().data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
@@ -139,13 +165,14 @@ if __name__ == '__main__':
         help="Audio output device. See http://xiph.org/ao/doc/ for supported drivers. Defaults to pulse.",
         default="pulse"
         )
+    parser.add_option( "-d", "--musicdir", help="Library directory", default=os.environ["HOME"])
     parser.add_option( "-p", "--playlist", help="A file to initialize the playlist from.")
     parser.add_option( "-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.")
     options, posargs = parser.parse_args()
 
 
     app = QtGui.QApplication( sys.argv )
-    ply = FailPlay(options.out)
+    ply = FailPlay(options.out, options.musicdir)
 
     if options.playlist:
         ply.playlist.loadpls(options.playlist)
