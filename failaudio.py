@@ -47,6 +47,12 @@ class Source(QtCore.QObject):
 class Playlist(QtCore.QObject):
     """ Playlist management object. """
 
+    sig_append  = QtCore.SIGNAL( 'append(const QString)' )
+    sig_insert  = QtCore.SIGNAL( 'insert(const int, const QString)' )
+    sig_remove  = QtCore.SIGNAL( 'remove(const QString)' )
+    sig_enqueue = QtCore.SIGNAL( 'enqueue(const QString)' )
+    sig_dequeue = QtCore.SIGNAL( 'dequeue(const QString)' )
+
     def __init__(self):
         QtCore.QObject.__init__(self)
         self.playlist  = []
@@ -146,6 +152,7 @@ class Playlist(QtCore.QObject):
         if self.jmpqueue:
             self.jmpqueue_dirty = True
             path = self.jmpqueue.pop(0)
+            self.emit(Playlist.sig_dequeue, path)
             self.current = self.playlist.index(path)
         elif self.repeat is not None and self.current == self.repeat:
             pass
@@ -178,6 +185,7 @@ class Playlist(QtCore.QObject):
         if path not in self.playlist:
             self.playlist_dirty = True
             self.playlist.append(path)
+            self.emit(Playlist.sig_append, path)
         return self
 
     def _remove(self, path):
@@ -190,6 +198,7 @@ class Playlist(QtCore.QObject):
 
             self.playlist_dirty = True
             self.playlist.remove(path)
+            self.emit(Playlist.sig_remove, path)
 
     def remove(self, path):
         """ Remove a file from the playlist.
@@ -205,6 +214,7 @@ class Playlist(QtCore.QObject):
         if path not in self.playlist:
             self.playlist_dirty = True
             self.playlist.insert(index, path)
+            self.emit(Playlist.sig_insert, index, path)
             if index <= self.current:
                 self.current += 1
         return self
@@ -222,6 +232,7 @@ class Playlist(QtCore.QObject):
         if path not in self.jmpqueue:
             self.jmpqueue_dirty = True
             self.jmpqueue.append(path)
+            self.emit(Playlist.sig_enqueue, path)
         return self
 
     def dequeue(self, path):
@@ -229,6 +240,7 @@ class Playlist(QtCore.QObject):
         if path in self.jmpqueue:
             self.jmpqueue_dirty = True
             self.jmpqueue.remove(path)
+            self.emit(Playlist.sig_dequeue, path)
         return self
 
     @property
