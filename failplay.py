@@ -24,7 +24,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.connect( self.btnPlayPause,     QtCore.SIGNAL("clicked(bool)"), self.play_pause           )
 
-        self.connect( self.playlist,         Player.sig_started,             self.update_playlist      )
+        self.connect( self.player,           Player.sig_started,             self.update_playlist      )
         self.connect( self.playlist,         Playlist.sig_append,            self.update_playlist      )
         self.connect( self.playlist,         Playlist.sig_insert,            self.update_playlist      )
         self.connect( self.playlist,         Playlist.sig_remove,            self.update_playlist      )
@@ -61,15 +61,20 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.lblTime.setText("%.3f" % source.pos)
 
     def status_update_trans(self, prev, source):
+        self.pgbSongProgress.setMaximum(prev.duration)
+        self.pgbSongProgress.setValue(prev.pos)
         self.lblTime.setText("%.3f\n%.3f" % (prev.pos, source.pos))
 
     def update_playlist(self):
         self.lstPlaylist.clear()
+        print "Redraw.", self.playlist.current
         for idx, path in enumerate(self.playlist.playlist):
             item = QtGui.QListWidgetItem()
             item.setData(Qt.Qt.DisplayRole, path.rsplit( '/', 1 )[1].rsplit('.', 1)[0])
             item.setData(Qt.Qt.UserRole, path)
-            item.setSelected( idx == self.playlist.current )
+            if idx == self.playlist.current:
+                print "selected", path
+                item.setBackground( QtGui.QBrush(Qt.Qt.cyan, Qt.Qt.SolidPattern) )
             self.lstPlaylist.addItem(item)
 
 
