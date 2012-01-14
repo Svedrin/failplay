@@ -40,6 +40,99 @@ class Source(QtCore.QObject):
         return self.gen
 
 
+class Playlist(QtCore.QObject):
+    """ Playlist management object. """
+
+    def __init__(self):
+        QtCore.QObject.__init__(self)
+        self.playlist = []
+        self.jmpqueue = []
+        self.current  = None
+
+    def prev(self):
+        """ Move to the previous song. """
+        if self.current == 0:
+            self.current = len(self.playlist) - 1
+        else:
+            self.current -= 1
+        return self.playlist[self.current]
+
+    def next(self):
+        """ Move to the next song. """
+        if not self.playlist:
+            raise ValueError("No songs in playlist")
+        if self.jmpqueue:
+            path = self.jmpqueue.pop(0)
+            self.current = self.playlist.index(path)
+        elif self.current is None or self.current == len(self.playlist) - 1:
+            # Not yet started or at end of list
+            self.current = 0
+        else:
+            self.current += 1
+        return self.playlist[self.current]
+
+    @property
+    def path(self):
+        """ The path of the current file. """
+        return self.playlist[self.current]
+
+    def append(self, path):
+        """ Append a new file to the playlist. """
+        if path not in self.playlist:
+            self.playlist.append(path)
+        return len(self.playlist)
+
+    def _remove(self, path):
+        if path in self.playlist:
+            if self.playlist.index(path) == self.current:
+                if self.current > 0:
+                    self.current -= 1
+                else:
+                    self.current = None
+
+            self.playlist.remove(path)
+
+    def remove(self, path):
+        """ Remove a file from the playlist.
+
+            If it is also in the queue, it will be dequeued first.
+        """
+        self.dequeue(path)
+        self._remove(path)
+        return len(self.playlist)
+
+    def insert(self, index, path):
+        """ Insert a new file before the given index. """
+        if path not in self.playlist:
+            self.playlist.insert(index, path)
+            if index <= self.current:
+                self.current += 1
+        return len(self.playlist)
+
+    def move(self, index, path):
+        """ Move a file to the given index without changing its status in the queue. """
+        self._remove(path)
+        self.insert(path, index)
+
+    def __len__(self):
+        return len(self.playlist)
+
+    def enqueue(self, path):
+        """ Enqueue a file, automatically adding it to the playlist if necessary. """
+        if path not in self.playlist:
+            self.playlist.append(path)
+        if path not in self.jmpqueue:
+            self.jmpqueue.append(path)
+        return len(self.jmpqueue)
+
+    def dequeue(self, path):
+        """ Remove a file from the queue without changing its status in the playlist. """
+        if path in self.jmpqueue:
+            self.jmpqueue.remove(path)
+        return len(self.jmpqueue)
+
+
+
 class Player(QtCore.QObject, threading.Thread):
     sig_transition_start = QtCore.SIGNAL( 'transition_start(const QObject, const QOBject)' )
     sig_transition_end   = QtCore.SIGNAL( 'transition_start(const QObject, const QOBject)' )
