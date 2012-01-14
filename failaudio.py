@@ -152,13 +152,13 @@ class Playlist(QtCore.QObject):
         if self.stopafter is not None and self.current == self.stopafter:
             self.stopafter = None
             raise StopIteration("Set to stop after this track")
-        if self.jmpqueue:
+        if self.repeat is not None and self.current == self.repeat:
+            pass
+        elif self.jmpqueue:
             self.jmpqueue_dirty = True
             path = self.jmpqueue.pop(0)
             self.emit(Playlist.sig_dequeue, path)
             self.current = self.playlist.index(path)
-        elif self.repeat is not None and self.current == self.repeat:
-            pass
         elif self.current is None or self.current == len(self.playlist) - 1:
             # Not yet started or at end of list
             self.current = 0
