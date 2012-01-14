@@ -9,7 +9,7 @@ from PyQt4 import Qt
 from PyQt4 import QtCore
 from PyQt4 import QtGui
 
-from failaudio import Source, Player
+from failaudio   import Playlist, Player
 from ui_failplay import Ui_MainWindow
 
 class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
@@ -17,17 +17,26 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         QtGui.QMainWindow.__init__(self)
         Ui_MainWindow.__init__(self)
 
-        self.player = Player(outdev)
+        self.playlist = Playlist()
+        self.player   = Player(outdev, self.playlist)
 
         self.setupUi(self)
 
-        self.connect( self.btnPlayPause,     QtCore.SIGNAL("clicked(bool)"), self.playPause            )
+        self.connect( self.btnPlayPause,     QtCore.SIGNAL("clicked(bool)"), self.play_pause           )
+
+        self.connect( self.playlist,         Player.sig_started,             self.update_playlist      )
+        self.connect( self.playlist,         Playlist.sig_append,            self.update_playlist      )
+        self.connect( self.playlist,         Playlist.sig_insert,            self.update_playlist      )
+        self.connect( self.playlist,         Playlist.sig_remove,            self.update_playlist      )
+        self.connect( self.playlist,         Playlist.sig_enqueue,           self.update_playlist      )
+        self.connect( self.playlist,         Playlist.sig_dequeue,           self.update_playlist      )
+
         self.connect( self.player,           Player.sig_position_normal,     self.status_update_normal )
         self.connect( self.player,           Player.sig_position_trans,      self.status_update_trans  )
 
         self.show()
 
-    def playPause(self, checked):
+    def play_pause(self, checked):
         pass
 
     def skip(self, checked):
@@ -39,29 +48,54 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def stop(self, checked):
         pass
 
+    def start(self):
+        self.player.start()
+
+    def closeEvent(self, ev):
+        self.player.stop()
+        QtGui.QMainWindow.closeEvent(self, ev)
+
     def status_update_normal(self, source):
+        self.pgbSongProgress.setMaximum(source.duration)
+        self.pgbSongProgress.setValue(source.pos)
         self.lblTime.setText("%.3f" % source.pos)
 
     def status_update_trans(self, prev, source):
         self.lblTime.setText("%.3f\n%.3f" % (prev.pos, source.pos))
 
+    def update_playlist(self):
+        self.lstPlaylist.clear()
+        for idx, path in enumerate(self.playlist.playlist):
+            item = QtGui.QListWidgetItem()
+            item.setData(Qt.Qt.DisplayRole, path.rsplit( '/', 1 )[1].rsplit('.', 1)[0])
+            item.setData(Qt.Qt.UserRole, path)
+            item.setSelected( idx == self.playlist.current )
+            self.lstPlaylist.addItem(item)
+
 
 if __name__ == '__main__':
-    parser = OptionParser()
+    parser = OptionParser(usage="%prog [options] [<file> ...]\n")
     parser.add_option( "-o", "--out",
         help="Audio output device. See http://xiph.org/ao/doc/ for supported drivers. Defaults to pulse.",
         default="pulse"
         )
+    parser.add_option( "-p", "--playlist", help="A file to initialize the playlist from.")
+    parser.add_option( "-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.")
     options, posargs = parser.parse_args()
+
 
     app = QtGui.QApplication( sys.argv )
     ply = FailPlay(options.out)
 
-    last  = Source("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 10 - Stardust.flac")
-    later = Source("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 06 - Fantasia.flac")
-    ply.player.enqueue(last)
-    ply.player.enqueue(later)
-    ply.player.start()
+    if options.playlist:
+        ply.playlist.loadpls(options.playlist)
 
+    for filename in posargs:
+        ply.playlist.append(filename)
+
+    if options.writepls:
+        ply.playlist.writepls(options.writepls)
+
+    ply.start()
 
     app.exec_()
