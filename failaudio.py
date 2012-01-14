@@ -291,6 +291,7 @@ class Player(QtCore.QObject, threading.Thread):
     def run(self):
         transtime = 6.0
         prev = None
+        end_of_playlist = False
 
         if self.source is None:
             try:
@@ -314,16 +315,17 @@ class Player(QtCore.QObject, threading.Thread):
                 self.pcm.play( srcdata )
                 self.emit(Player.sig_position_normal, self.source)
 
-                if self.source.duration - self.source.pos <= transtime:
+                if self.source.duration - self.source.pos <= transtime and not end_of_playlist:
                     #print "Entering transition!"
                     prev = self.source
                     try:
                         self.source = self.next()
                     except StopIteration:
-                        self.emit(Player.sig_stopped, e.message)
-                    self.source.start()
-                    self.emit(Player.sig_started, self.source)
-                    self.emit(Player.sig_transition_start, prev, self.source)
+                        end_of_playlist = True
+                    else:
+                        self.source.start()
+                        self.emit(Player.sig_started, self.source)
+                        self.emit(Player.sig_transition_start, prev, self.source)
 
             else:
                 try:
@@ -346,6 +348,7 @@ class Player(QtCore.QObject, threading.Thread):
                         self.pcm.play( sample )
 
         self.source.stop()
+        self.emit(Player.sig_stopped, "end of playlist")
 
 
 if __name__ == '__main__':
