@@ -10,6 +10,8 @@ import ao
 import audioread
 import threading
 
+from ConfigParser import ConfigParser
+
 
 class Source(QtCore.QObject):
     sig_start  = QtCore.SIGNAL( 'start(const QString)' )
@@ -51,6 +53,69 @@ class Playlist(QtCore.QObject):
         self.stopafter = None
         self.repeat    = None
 
+    def loadpls(self, fpath):
+        """ Load the playlist from a .pls file. Silently clears the current playlist. """
+        pls = ConfigParser()
+        if not pls.read(fpath):
+            raise ValueError("Could not read file")
+
+        self.playlist  = []
+        self.jmpqueue  = []
+        self.current   = None
+        self.stopafter = None
+        self.repeat    = None
+
+        files = [opt for opt in pls.options("playlist") if opt.startswith("file")]
+        files.sort()
+        for fileopt in files:
+            self.append( pls.get("playlist", fileopt) )
+
+        if pls.has_section("failplay"):
+            def intOrNone(name):
+                if pls.has_option("failplay", name):
+                    value = pls.get("failplay", name)
+                else:
+                    value = "None"
+                if value == "None":
+                    value = None
+                else:
+                    value = int(value)
+                return value
+
+            self.stopafter = intOrNone("stopafter")
+            self.current   = intOrNone("current")
+            self.repeat    = intOrNone("repeat")
+
+            if pls.has_option("failplay", "queue"):
+                self.jmpqueue  = [ self.playlist[int(idx) - 1] for idx in pls.get("failplay", "queue").split(' ') ]
+
+        return self
+
+    def writepls(self, fpath):
+        """ Write the current playlist to a file in .pls format. """
+        fd = open(fpath, "wb")
+        try:
+            fd.write("[playlist]\n")
+            for i, path in enumerate(self.playlist):
+                i += 1
+                fd.write( "File%d=%s\n" % (i, path) )
+                fd.write( "Title%d=%s\n" % (i, self._parse_title(path)) )
+                fd.write( "\n" )
+
+            fd.write("NumberOfEntries=%d\n" % len(self.playlist))
+            fd.write("Version=2\n")
+            fd.write( "\n" )
+
+            fd.write("[failplay]\n")
+            fd.write("StopAfter=%s\n" % self.stopafter)
+            fd.write("Repeat=%s\n"    % self.repeat)
+            fd.write("Current=%s\n"   % self.current)
+            fd.write("Queue=%s\n"     % ' '.join([ str(self.playlist.index(path) + 1) for path in self.jmpqueue ]))
+        finally:
+            fd.close
+
+        return self
+
     def prev(self):
         """ Move to the previous song. """
         if self.current == 0:
@@ -82,6 +147,13 @@ class Playlist(QtCore.QObject):
     def path(self):
         """ The path of the current file. """
         return self.playlist[self.current]
+
+    def _parse_title(self, path):
+        return path.rsplit( '/', 1 )[1].rsplit('.', 1)[0]
+
+    @property
+    def title(self):
+        return self._parse_title(self.path)
 
     def append(self, path):
         """ Append a new file to the playlist. """
@@ -216,11 +288,15 @@ class Player(QtCore.QObject, threading.Thread):
                         sample = audioop.add( audioop.mul( prevdata, 2, fac ), audioop.mul( srcdata, 2, 1 - fac ), 2 )
                         self.pcm.play( sample )
 
+
+
 if __name__ == '__main__':
     p = Playlist()
     p.append("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 02 - Dreamscape.flac")
     p.append("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 10 - Stardust.flac")
     p.enqueue("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 06 - Fantasia.flac")
+    p.writepls("derp.pls")
+    #p.loadpls("derp.pls")
 
     eternity = Player("pulse", p)
 
