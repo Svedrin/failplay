@@ -129,8 +129,8 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.lblTime.setText("%.3f" % source.pos)
 
     def status_update_trans(self, prev, source):
-        self.pgbSongProgress.setMaximum(prev.duration)
-        self.pgbSongProgress.setValue(prev.pos)
+        self.pgbSongProgress.setMaximum(source.duration)
+        self.pgbSongProgress.setValue(source.pos)
         self.lblTime.setText("%.3f\n%.3f" % (prev.pos, source.pos))
 
     def update_playlist(self):
@@ -146,7 +146,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             if idx == self.playlist.repeat:
                 modifiers.append( u'♻' )
             if idx == self.playlist.stopafter:
-                modifiers.append( u'▇' )
+                modifiers.append( u'▅' )
             if modifiers:
                 display += " [%s]" % ''.join(modifiers)
             item.setData(Qt.Qt.DisplayRole, display)
