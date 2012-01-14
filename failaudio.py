@@ -140,23 +140,23 @@ class Player(QtCore.QObject, threading.Thread):
     sig_position_normal  = QtCore.SIGNAL( 'position_normal(const Object)' )
     sig_position_trans   = QtCore.SIGNAL( 'position_trans(const QObject, const QObject)' )
 
-    def __init__(self, pcm):
+    def __init__(self, pcm, playlist):
         threading.Thread.__init__(self)
         QtCore.QObject.__init__(self)
-        self.pcm    = ao.AudioDevice(pcm)
-        self.next   = None
-        self.source = None
+        self.pcm      = ao.AudioDevice(pcm)
+        self.source   = None
+        self.playlist = playlist
 
-    def enqueue(self, next):
-        if self.source is None:
-            self.source = next
-        else:
-            self.next = next
+    def next(self):
+        """ Create a source for the next item in the playlist. """
+        return Source( self.playlist.next() )
 
     def run(self):
         transtime = 6.0
         prev = None
 
+        if self.source is None:
+            self.source = self.next()
         self.source.start()
 
         while True:
@@ -173,8 +173,7 @@ class Player(QtCore.QObject, threading.Thread):
                 if self.next is not None and self.source.duration - self.source.pos <= transtime:
                     print "Entering transition!"
                     prev = self.source
-                    self.source = self.next
-                    self.next = None
+                    self.source = self.next()
                     self.source.start()
                     self.emit(Player.sig_transition_start, prev, self.source)
 
@@ -198,19 +197,13 @@ class Player(QtCore.QObject, threading.Thread):
                         self.pcm.play( sample )
 
 if __name__ == '__main__':
-    #first = Source("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 02 - Dreamscape.flac")
-    #last  = Source("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 10 - Stardust.flac")
+    p = Playlist()
+    p.append("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 02 - Dreamscape.flac")
+    p.append("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 10 - Stardust.flac")
+    p.enqueue("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 06 - Fantasia.flac")
 
-    #first = Source("/tmp/eins.mp3")
-    #last  = Source("/tmp/zwei.mp3")
+    eternity = Player("pulse", p)
 
-    eternity = Player("pulse")
-    #eternity.enqueue(first)
-    #eternity.enqueue(last)
-    #eternity.start()
-
-    later = Source("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 06 - Fantasia.flac")
-    eternity.enqueue(later)
     eternity.start()
     print "Playing!"
     eternity.join()
