@@ -21,7 +21,11 @@
        <widget class="QListWidget" name="lstLibrary"/>
       </item>
       <item>
-       <widget class="QListWidget" name="lstPlaylist"/>
+       <widget class="QListWidget" name="lstPlaylist">
+        <property name="contextMenuPolicy">
+         <enum>Qt::ActionsContextMenu</enum>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>
