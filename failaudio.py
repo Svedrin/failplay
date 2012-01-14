@@ -49,6 +49,7 @@ class Playlist(QtCore.QObject):
         self.jmpqueue  = []
         self.current   = None
         self.stopafter = None
+        self.repeat    = None
 
     def prev(self):
         """ Move to the previous song. """
@@ -68,6 +69,8 @@ class Playlist(QtCore.QObject):
         if self.jmpqueue:
             path = self.jmpqueue.pop(0)
             self.current = self.playlist.index(path)
+        elif self.repeat is not None and self.current == self.repeat:
+            pass
         elif self.current is None or self.current == len(self.playlist) - 1:
             # Not yet started or at end of list
             self.current = 0
