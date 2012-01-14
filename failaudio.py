@@ -29,6 +29,9 @@ class Source(QtCore.QObject):
         self.starttime = time()
         self.emit( Source.sig_start, self.path )
 
+    def stop(self):
+        self.fd.close()
+
     @property
     def duration(self):
         return self.fd.duration
@@ -276,10 +279,14 @@ class Player(QtCore.QObject, threading.Thread):
         self.pcm      = ao.AudioDevice(pcm)
         self.source   = None
         self.playlist = playlist
+        self.shutdown = False
 
     def next(self):
         """ Create a source for the next item in the playlist. """
         return Source( self.playlist.next() )
+
+    def stop(self):
+        self.shutdown = True
 
     def run(self):
         transtime = 6.0
@@ -295,18 +302,19 @@ class Player(QtCore.QObject, threading.Thread):
         self.source.start()
         self.emit(Player.sig_started, self.source)
 
-        while True:
+        while not self.shutdown:
             try:
                 srcdata = self.source.data.next()
             except StopIteration:
                 self.emit(Player.sig_stopped, "source ran out of data.")
+                self.source.stop()
                 break
 
             if prev is None:
                 self.pcm.play( srcdata )
                 self.emit(Player.sig_position_normal, self.source)
 
-                if self.next is not None and self.source.duration - self.source.pos <= transtime:
+                if self.source.duration - self.source.pos <= transtime:
                     #print "Entering transition!"
                     prev = self.source
                     try:
@@ -323,6 +331,7 @@ class Player(QtCore.QObject, threading.Thread):
                 except StopIteration:
                     #print "Old source done, leaving transition!"
                     self.emit(Player.sig_transition_end, prev, self.source)
+                    prev.stop()
                     prev = None
                     self.pcm.play( srcdata )
                     self.emit(Player.sig_position_normal, self.source)
@@ -336,6 +345,7 @@ class Player(QtCore.QObject, threading.Thread):
                         sample = audioop.add( audioop.mul( prevdata, 2, fac ), audioop.mul( srcdata, 2, 1 - fac ), 2 )
                         self.pcm.play( sample )
 
+        self.source.stop()
 
 
 if __name__ == '__main__':
