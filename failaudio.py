@@ -53,6 +53,9 @@ class Playlist(QtCore.QObject):
         self.stopafter = None
         self.repeat    = None
 
+        self.playlist_dirty = False
+        self.jmpqueue_dirty = False
+
     def loadpls(self, fpath):
         """ Load the playlist from a .pls file. Silently clears the current playlist. """
         pls = ConfigParser()
@@ -89,6 +92,8 @@ class Playlist(QtCore.QObject):
             if pls.has_option("failplay", "queue"):
                 self.jmpqueue  = [ self.playlist[int(idx) - 1] for idx in pls.get("failplay", "queue").split(' ') ]
 
+        self.playlist_dirty = False
+        self.jmpqueue_dirty = False
         return self
 
     def writepls(self, fpath):
@@ -111,8 +116,11 @@ class Playlist(QtCore.QObject):
             fd.write("Repeat=%s\n"    % self.repeat)
             fd.write("Current=%s\n"   % self.current)
             fd.write("Queue=%s\n"     % ' '.join([ str(self.playlist.index(path) + 1) for path in self.jmpqueue ]))
+
+            self.playlist_dirty = False
+            self.jmpqueue_dirty = False
         finally:
-            fd.close
+            fd.close()
 
         return self
 
@@ -132,6 +140,7 @@ class Playlist(QtCore.QObject):
             self.stopafter = None
             raise StopIteration("Set to stop after this track")
         if self.jmpqueue:
+            self.jmpqueue_dirty = True
             path = self.jmpqueue.pop(0)
             self.current = self.playlist.index(path)
         elif self.repeat is not None and self.current == self.repeat:
@@ -142,6 +151,11 @@ class Playlist(QtCore.QObject):
         else:
             self.current += 1
         return self.playlist[self.current]
+
+    @property
+    def dirty(self):
+        """ True if there are unsaved changes. """
+        return self.playlist_dirty or self.jmpqueue_dirty
 
     @property
     def path(self):
@@ -158,6 +172,7 @@ class Playlist(QtCore.QObject):
     def append(self, path):
         """ Append a new file to the playlist. """
         if path not in self.playlist:
+            self.playlist_dirty = True
             self.playlist.append(path)
         return self
 
@@ -169,6 +184,7 @@ class Playlist(QtCore.QObject):
                 else:
                     self.current = None
 
+            self.playlist_dirty = True
             self.playlist.remove(path)
 
     def remove(self, path):
@@ -183,6 +199,7 @@ class Playlist(QtCore.QObject):
     def insert(self, index, path):
         """ Insert a new file before the given index. """
         if path not in self.playlist:
+            self.playlist_dirty = True
             self.playlist.insert(index, path)
             if index <= self.current:
                 self.current += 1
@@ -199,12 +216,14 @@ class Playlist(QtCore.QObject):
         if path not in self.playlist:
             self.playlist.append(path)
         if path not in self.jmpqueue:
+            self.jmpqueue_dirty = True
             self.jmpqueue.append(path)
         return self
 
     def dequeue(self, path):
         """ Remove a file from the queue without changing its status in the playlist. """
         if path in self.jmpqueue:
+            self.jmpqueue_dirty = True
             self.jmpqueue.remove(path)
         return self
 
