@@ -41,11 +41,11 @@ class Source(QtCore.QObject):
 
 
 class Player(QtCore.QObject, threading.Thread):
-    sig_transition_start = QtCore.SIGNAL( 'transition_start(const QString, const QString)' )
-    sig_transition_end   = QtCore.SIGNAL( 'transition_start(const QString, const QString)' )
+    sig_transition_start = QtCore.SIGNAL( 'transition_start(const QObject, const QOBject)' )
+    sig_transition_end   = QtCore.SIGNAL( 'transition_start(const QObject, const QOBject)' )
 
-    sig_position_normal  = QtCore.SIGNAL( 'position_normal(const QString, const float)' )
-    sig_position_trans   = QtCore.SIGNAL( 'position_trans(const QString, const float, const QString, const float)' )
+    sig_position_normal  = QtCore.SIGNAL( 'position_normal(const Object)' )
+    sig_position_trans   = QtCore.SIGNAL( 'position_trans(const QObject, const QObject)' )
 
     def __init__(self, pcm):
         threading.Thread.__init__(self)
@@ -75,7 +75,7 @@ class Player(QtCore.QObject, threading.Thread):
 
             if prev is None:
                 self.pcm.play( srcdata )
-                self.emit(Player.sig_position_normal, self.source.path, self.source.pos)
+                self.emit(Player.sig_position_normal, self.source)
 
                 if self.next is not None and self.source.duration - self.source.pos <= transtime:
                     print "Entering transition!"
@@ -83,20 +83,20 @@ class Player(QtCore.QObject, threading.Thread):
                     self.source = self.next
                     self.next = None
                     self.source.start()
-                    self.emit(Player.sig_transition_start, prev.path, self.source.path)
+                    self.emit(Player.sig_transition_start, prev, self.source)
 
             else:
                 try:
                     prevdata = prev.data.next()
                 except StopIteration:
                     print "Old source done, leaving transition!"
-                    self.emit(Player.sig_transition_end, prev.path, self.source.path)
+                    self.emit(Player.sig_transition_end, prev, self.source)
                     prev = None
                     self.pcm.play( srcdata )
-                    self.emit(Player.sig_position_normal, self.source.path, self.source.pos)
+                    self.emit(Player.sig_position_normal, self.source)
                 else:
                     fac = max( (prev.duration - prev.pos), 0 ) / transtime
-                    self.emit(Player.sig_position_trans, self.source.path, self.source.pos, prev.path, prev.pos)
+                    self.emit(Player.sig_position_trans, self.source, prev)
                     if len(prevdata) < len(srcdata):
                         # The last chunk may be too short, causing audioop some pain. Screw it, then.
                         self.pcm.play( audioop.mul( srcdata, 2, 1 - fac ) )

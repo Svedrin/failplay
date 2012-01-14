@@ -39,11 +39,11 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def stop(self, checked):
         pass
 
-    def status_update_normal(self, title, pos):
-        self.lblTime.setText("%.3f" % pos)
+    def status_update_normal(self, source):
+        self.lblTime.setText("%.3f" % source.pos)
 
-    def status_update_trans(self, oldtitle, oldpos, newtitle, newpos):
-        self.lblTime.setText("%.3f\n%.3f" % (oldpos, newpos))
+    def status_update_trans(self, prev, source):
+        self.lblTime.setText("%.3f\n%.3f" % (prev.pos, source.pos))
 
 
 if __name__ == '__main__':
