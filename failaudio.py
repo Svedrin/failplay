@@ -22,6 +22,8 @@ class Source(QtCore.QObject):
         self.path  = path
         self.fd    = audioread.audio_open(path)
         self.gen   = None
+        self.title = path.rsplit( '/', 1 )[1].rsplit('.', 1)[0]
+
 
     def start(self):
         self.starttime = time()
@@ -90,7 +92,9 @@ class Playlist(QtCore.QObject):
             self.repeat    = intOrNone("repeat")
 
             if pls.has_option("failplay", "queue"):
-                self.jmpqueue  = [ self.playlist[int(idx) - 1] for idx in pls.get("failplay", "queue").split(' ') ]
+                queuestr = pls.get("failplay", "queue").strip()
+                if queuestr:
+                    self.jmpqueue  = [ self.playlist[int(idx) - 1] for idx in queuestr.split(' ') ]
 
         self.playlist_dirty = False
         self.jmpqueue_dirty = False
@@ -245,11 +249,14 @@ class Playlist(QtCore.QObject):
 
 
 class Player(QtCore.QObject, threading.Thread):
-    sig_transition_start = QtCore.SIGNAL( 'transition_start(const QObject, const QOBject)' )
-    sig_transition_end   = QtCore.SIGNAL( 'transition_start(const QObject, const QOBject)' )
+    sig_transition_start = QtCore.SIGNAL( 'transition_start(const PyQt_PyObject, const PyQt_PyObject)' )
+    sig_transition_end   = QtCore.SIGNAL( 'transition_start(const PyQt_PyObject, const PyQt_PyObject)' )
 
-    sig_position_normal  = QtCore.SIGNAL( 'position_normal(const Object)' )
-    sig_position_trans   = QtCore.SIGNAL( 'position_trans(const QObject, const QObject)' )
+    sig_position_normal  = QtCore.SIGNAL( 'position_normal(const PyQt_PyObject)' )
+    sig_position_trans   = QtCore.SIGNAL( 'position_trans(const PyQt_PyObject, const PyQt_PyObject)' )
+
+    sig_started          = QtCore.SIGNAL( 'started(const PyQt_PyObject)' )
+    sig_stopped          = QtCore.SIGNAL( 'stopped(const QString)' )
 
     def __init__(self, pcm, playlist):
         threading.Thread.__init__(self)
@@ -267,14 +274,20 @@ class Player(QtCore.QObject, threading.Thread):
         prev = None
 
         if self.source is None:
-            self.source = self.next()
+            try:
+                self.source = self.next()
+            except StopIteration, e:
+                self.emit(Player.sig_stopped, e.message)
+                return
+
         self.source.start()
+        self.emit(Player.sig_started, self.source)
 
         while True:
             try:
                 srcdata = self.source.data.next()
             except StopIteration:
-                print "source ran out of data."
+                self.emit(Player.sig_stopped, "source ran out of data.")
                 break
 
             if prev is None:
@@ -282,17 +295,21 @@ class Player(QtCore.QObject, threading.Thread):
                 self.emit(Player.sig_position_normal, self.source)
 
                 if self.next is not None and self.source.duration - self.source.pos <= transtime:
-                    print "Entering transition!"
+                    #print "Entering transition!"
                     prev = self.source
-                    self.source = self.next()
+                    try:
+                        self.source = self.next()
+                    except StopIteration:
+                        self.emit(Player.sig_stopped, e.message)
                     self.source.start()
+                    self.emit(Player.sig_started, self.source)
                     self.emit(Player.sig_transition_start, prev, self.source)
 
             else:
                 try:
                     prevdata = prev.data.next()
                 except StopIteration:
-                    print "Old source done, leaving transition!"
+                    #print "Old source done, leaving transition!"
                     self.emit(Player.sig_transition_end, prev, self.source)
                     prev = None
                     self.pcm.play( srcdata )
@@ -310,16 +327,58 @@ class Player(QtCore.QObject, threading.Thread):
 
 
 if __name__ == '__main__':
+    from optparse import OptionParser
+
+    parser = OptionParser(usage="%prog [options] [<file> ...]\n")
+    parser.add_option( "-o", "--out",
+        help="Audio output device. See http://xiph.org/ao/doc/ for supported drivers. Defaults to pulse.",
+        default="pulse"
+        )
+    parser.add_option( "-p", "--playlist", help="A file to initialize the playlist from.")
+    parser.add_option( "-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.")
+    options, posargs = parser.parse_args()
+
+
     p = Playlist()
-    p.append("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 02 - Dreamscape.flac")
-    p.append("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 10 - Stardust.flac")
-    p.enqueue("/media/daten/Musik/Brian El - Spiritual Evolution/Bryan El - Spiritual Evolution - 06 - Fantasia.flac")
-    p.writepls("derp.pls")
-    #p.loadpls("derp.pls")
 
-    eternity = Player("pulse", p)
+    if options.playlist:
+        p.loadpls(options.playlist)
 
-    eternity.start()
-    print "Playing!"
-    eternity.join()
+    for filename in posargs:
+        p.append(filename)
+
+    if options.writepls:
+        p.writepls(options.writepls)
+
+
+    app = QtCore.QCoreApplication([])
+
+    player = Player("pulse", p)
+
+    class ConPrinter(QtCore.QObject):
+        def showstatus_normal(self, src):
+            # \x1b[K = VT100 delete everything right of the cursor
+            print "\r\x1b[K", src.title, src.pos,
+
+        def showstatus_transition(self, prev, src):
+            # \x1b[K = VT100 delete everything right of the cursor
+            print "\r\x1b[K", prev.title, prev.pos, u'→', src.title + src.pos,
+
+        def showstatus_started(self, src):
+            print "Now playing:", src.title
+
+        def showstatus_stop(self, msg):
+            print "\n", msg
+
+    printer = ConPrinter()
+
+    #player.connect( player, Player.sig_position_normal, printer.showstatus_normal     )
+    #player.connect( player, Player.sig_position_trans,  printer.showstatus_transition )
+    player.connect( player, Player.sig_started,         printer.showstatus_started    )
+    player.connect( player, Player.sig_stopped,         printer.showstatus_stop       )
+    player.connect( player, Player.sig_stopped,         app.quit                      )
+
+    player.start()
+
+    app.exec_()
 
