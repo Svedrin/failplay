@@ -45,9 +45,10 @@ class Playlist(QtCore.QObject):
 
     def __init__(self):
         QtCore.QObject.__init__(self)
-        self.playlist = []
-        self.jmpqueue = []
-        self.current  = None
+        self.playlist  = []
+        self.jmpqueue  = []
+        self.current   = None
+        self.stopafter = None
 
     def prev(self):
         """ Move to the previous song. """
@@ -60,7 +61,10 @@ class Playlist(QtCore.QObject):
     def next(self):
         """ Move to the next song. """
         if not self.playlist:
-            raise ValueError("No songs in playlist")
+            raise StopIteration("No songs in playlist")
+        if self.stopafter is not None and self.current == self.stopafter:
+            self.stopafter = None
+            raise StopIteration("Set to stop after this track")
         if self.jmpqueue:
             path = self.jmpqueue.pop(0)
             self.current = self.playlist.index(path)
@@ -80,7 +84,7 @@ class Playlist(QtCore.QObject):
         """ Append a new file to the playlist. """
         if path not in self.playlist:
             self.playlist.append(path)
-        return len(self.playlist)
+        return self
 
     def _remove(self, path):
         if path in self.playlist:
@@ -99,7 +103,7 @@ class Playlist(QtCore.QObject):
         """
         self.dequeue(path)
         self._remove(path)
-        return len(self.playlist)
+        return self
 
     def insert(self, index, path):
         """ Insert a new file before the given index. """
@@ -107,15 +111,13 @@ class Playlist(QtCore.QObject):
             self.playlist.insert(index, path)
             if index <= self.current:
                 self.current += 1
-        return len(self.playlist)
+        return self
 
     def move(self, index, path):
         """ Move a file to the given index without changing its status in the queue. """
         self._remove(path)
         self.insert(path, index)
-
-    def __len__(self):
-        return len(self.playlist)
+        return self
 
     def enqueue(self, path):
         """ Enqueue a file, automatically adding it to the playlist if necessary. """
@@ -123,14 +125,29 @@ class Playlist(QtCore.QObject):
             self.playlist.append(path)
         if path not in self.jmpqueue:
             self.jmpqueue.append(path)
-        return len(self.jmpqueue)
+        return self
 
     def dequeue(self, path):
         """ Remove a file from the queue without changing its status in the playlist. """
         if path in self.jmpqueue:
             self.jmpqueue.remove(path)
+        return self
+
+    @property
+    def qlen(self):
+        """ Return the length of the queue. """
         return len(self.jmpqueue)
 
+    def __len__(self):
+        """ Return the length of the playlist. """
+        return len(self.playlist)
+
+    len = property(__len__)
+
+    def __iter__(self):
+        """ Iterate over the playlist. """
+        while True:
+            yield self.next()
 
 
 class Player(QtCore.QObject, threading.Thread):
