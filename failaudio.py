@@ -368,7 +368,7 @@ if __name__ == '__main__':
             print "Now playing:", src.title
 
         def showstatus_stop(self, msg):
-            print "\n", msg
+            print "Exit:", msg
 
     printer = ConPrinter()
 
@@ -377,6 +377,8 @@ if __name__ == '__main__':
     player.connect( player, Player.sig_started,         printer.showstatus_started    )
     player.connect( player, Player.sig_stopped,         printer.showstatus_stop       )
     player.connect( player, Player.sig_stopped,         app.quit                      )
+
+    print "OK, here we go - hit q to exit."
 
     player.start()
 
