@@ -322,6 +322,8 @@ class Player(QtCore.QObject, threading.Thread):
                         self.source = self.next()
                     except StopIteration:
                         end_of_playlist = True
+                        self.source = prev
+                        prev = None
                     else:
                         self.source.start()
                         self.emit(Player.sig_started, self.source)
