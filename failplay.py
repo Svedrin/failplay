@@ -26,6 +26,8 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.setupUi(self)
 
         self.connect( self.player,           Player.sig_started,             self.update_playlist      )
+        self.connect( self.player,           Player.sig_stopped,             self.close                )
+
         self.connect( self.playlist,         Playlist.sig_append,            self.update_playlist      )
         self.connect( self.playlist,         Playlist.sig_insert,            self.update_playlist      )
         self.connect( self.playlist,         Playlist.sig_remove,            self.update_playlist      )
