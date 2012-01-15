@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 # kate: space-indent on; indent-width 4; replace-tabs on;
 
@@ -183,6 +184,10 @@ if __name__ == '__main__':
 
     conf = ConfigParser()
     conf.read(os.path.join(os.environ["HOME"], ".failplay", "failplay.conf"))
+
+    if conf.has_section("environment"):
+        for key in conf.options("environment"):
+            os.environ[key.upper()] = conf.get("environment", key)
 
     def getconf(value, default=None):
         if getattr(options, value) is not None:
