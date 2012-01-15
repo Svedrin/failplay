@@ -3,7 +3,7 @@
 
 import os, sys
 
-from optparse import OptionParser
+from optparse     import OptionParser
 from ConfigParser import ConfigParser
 
 from PyQt4 import Qt
@@ -12,6 +12,7 @@ from PyQt4 import QtGui
 
 from failaudio   import Playlist, Player
 from ui_failplay import Ui_MainWindow
+
 
 class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def __init__(self, outdev, librarydir=os.environ["HOME"]):
@@ -35,7 +36,9 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.connect( self.player,           Player.sig_position_normal,     self.status_update_normal )
         self.connect( self.player,           Player.sig_position_trans,      self.status_update_trans  )
 
-        self.connect( self.lstLibrary, QtCore.SIGNAL("itemDoubleClicked(QListWidgetItem *)"), self.append )
+        self.connect( self.lstLibrary,  QtCore.SIGNAL("itemDoubleClicked(QListWidgetItem *)"), self.append )
+
+        self.connect( self.lstPlaylist, QtCore.SIGNAL("itemDoubleClicked(QListWidgetItem *)"), self.toggleEnqueue )
 
         # build playlist context menu
         self.actRemove = QtGui.QAction("Remove", self.lstPlaylist)
@@ -89,6 +92,13 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def append(self, item):
         path = item.data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
         self.playlist.append( path )
+
+    def toggleEnqueue(self, item):
+        path = item.data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
+        if path in self.playlist.jmpqueue:
+            self.playlist.dequeue(path)
+        else:
+            self.playlist.enqueue(path)
 
     def remove(self):
         path = self.lstPlaylist.currentItem().data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
