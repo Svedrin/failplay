@@ -3,6 +3,7 @@
 
 import os, sys
 
+from datetime     import timedelta
 from optparse     import OptionParser
 from ConfigParser import ConfigParser
 
@@ -23,8 +24,6 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.player   = Player(outdev, self.playlist)
 
         self.setupUi(self)
-
-        self.connect( self.btnPlayPause,     QtCore.SIGNAL("clicked(bool)"), self.play_pause           )
 
         self.connect( self.player,           Player.sig_started,             self.update_playlist      )
         self.connect( self.playlist,         Playlist.sig_append,            self.update_playlist      )
@@ -74,16 +73,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.show()
 
-    def play_pause(self, checked):
-        pass
-
     def skip(self, checked):
-        pass
-
-    def previous(self, checked):
-        pass
-
-    def stop(self, checked):
         pass
 
     def start(self):
@@ -134,15 +124,25 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.player.stop()
         QtGui.QMainWindow.closeEvent(self, ev)
 
-    def status_update_normal(self, source):
-        self.pgbSongProgress.setMaximum(source.duration)
-        self.pgbSongProgress.setValue(source.pos)
-        self.lblTime.setText("%.3f" % source.pos)
+    def _status_update(self, progressbar, source):
+        progressbar.setMaximum(source.duration)
+        progressbar.setValue(source.pos)
+        # Let's abuse setFormat() a little, shall we?
+        progressbar.setFormat(
+            u"%s — %s (%s)" % (source.title, timedelta(seconds=int(source.pos)), timedelta(seconds=int(source.duration)))
+            )
 
-    def status_update_trans(self, prev, source):
-        self.pgbSongProgress.setMaximum(source.duration)
-        self.pgbSongProgress.setValue(source.pos)
-        self.lblTime.setText("%.3f\n%.3f" % (prev.pos, source.pos))
+    def status_update_normal(self, source):
+        self._status_update(self.pgbSongProgress, source)
+        self.pgbSongProgressPrev.setFormat("Idle")
+        self.pgbSongProgressPrev.setMaximum(100)
+        self.pgbSongProgressPrev.setValue(0)
+        self.sldCrossfade.setValue(100)
+
+    def status_update_trans(self, prev, source, fac):
+        self._status_update(self.pgbSongProgress, source)
+        self._status_update(self.pgbSongProgressPrev, prev)
+        self.sldCrossfade.setValue((1 - fac) * 100)
 
     def update_playlist(self):
         self.lstPlaylist.clear()
