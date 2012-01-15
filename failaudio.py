@@ -268,7 +268,7 @@ class Player(QtCore.QObject, threading.Thread):
     sig_transition_end   = QtCore.SIGNAL( 'transition_start(const PyQt_PyObject, const PyQt_PyObject)' )
 
     sig_position_normal  = QtCore.SIGNAL( 'position_normal(const PyQt_PyObject)' )
-    sig_position_trans   = QtCore.SIGNAL( 'position_trans(const PyQt_PyObject, const PyQt_PyObject)' )
+    sig_position_trans   = QtCore.SIGNAL( 'position_trans(const PyQt_PyObject, const PyQt_PyObject, const float)' )
 
     sig_started          = QtCore.SIGNAL( 'started(const PyQt_PyObject)' )
     sig_stopped          = QtCore.SIGNAL( 'stopped(const QString)' )
@@ -339,7 +339,7 @@ class Player(QtCore.QObject, threading.Thread):
                     self.emit(Player.sig_position_normal, self.source)
                 else:
                     fac = max( (prev.duration - prev.pos), 0 ) / transtime
-                    self.emit(Player.sig_position_trans, self.source, prev)
+                    self.emit(Player.sig_position_trans, prev, self.source, fac)
                     if len(prevdata) < len(srcdata):
                         # The last chunk may be too short, causing audioop some pain. Screw it, then.
                         self.pcm.play( audioop.mul( srcdata, 2, 1 - fac ) )
