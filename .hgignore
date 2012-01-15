@@ -3,3 +3,6 @@ syntax: glob
 *~
 *.pyc
 ui_*.py
+
+*.pls
+libsndfilectypes
