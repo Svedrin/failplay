@@ -167,6 +167,7 @@ if __name__ == '__main__':
         default="pulse"
         )
     parser.add_option( "-d", "--musicdir", help="Library directory", default=os.environ["HOME"])
+    parser.add_option( "-q", "--enqueue",  help="Enqueue the tracks named on the command line.", action="store_true", default=False)
     parser.add_option( "-p", "--playlist", help="A file to initialize the playlist from.")
     parser.add_option( "-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.")
     options, posargs = parser.parse_args()
@@ -176,14 +177,19 @@ if __name__ == '__main__':
     ply = FailPlay(options.out, options.musicdir)
 
     if options.playlist:
+        print "Loading playlist from", options.playlist
         ply.playlist.loadpls(options.playlist)
 
     for filename in posargs:
-        ply.playlist.append(filename)
-
-    if options.writepls:
-        ply.playlist.writepls(options.writepls)
+        if options.enqueue:
+            ply.playlist.enqueue(filename)
+        else:
+            ply.playlist.append(filename)
 
     ply.start()
 
     app.exec_()
+
+    if options.writepls:
+        print "Saving playlist to", options.writepls
+        ply.playlist.writepls(options.writepls)

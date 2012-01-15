@@ -361,19 +361,21 @@ if __name__ == '__main__':
         )
     parser.add_option( "-p", "--playlist", help="A file to initialize the playlist from.")
     parser.add_option( "-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.")
+    parser.add_option( "-q", "--enqueue",  help="Enqueue the tracks named on the command line.", action="store_true", default=False)
     options, posargs = parser.parse_args()
 
 
     p = Playlist()
 
     if options.playlist:
+        print "Loading playlist from", options.playlist
         p.loadpls(options.playlist)
 
     for filename in posargs:
-        p.append(filename)
-
-    if options.writepls:
-        p.writepls(options.writepls)
+        if options.enqueue:
+            p.enqueue(filename)
+        else:
+            p.append(filename)
 
 
     app = QtCore.QCoreApplication([])
@@ -409,3 +411,6 @@ if __name__ == '__main__':
 
     app.exec_()
 
+    if options.writepls:
+        print "Saving playlist to", options.writepls
+        p.writepls(options.writepls)
