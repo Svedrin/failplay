@@ -75,9 +75,6 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.show()
 
-    def skip(self, checked):
-        pass
-
     def start(self):
         self.player.start()
 
