@@ -4,6 +4,7 @@
 import os, sys
 
 from optparse import OptionParser
+from ConfigParser import ConfigParser
 
 from PyQt4 import Qt
 from PyQt4 import QtCore
@@ -162,26 +163,36 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
 if __name__ == '__main__':
     parser = OptionParser(usage="%prog [options] [<file> ...]\n")
-    parser.add_option( "-o", "--out",
-        help="Audio output device. See http://xiph.org/ao/doc/ for supported drivers. Defaults to pulse.",
-        default="pulse"
+    parser.add_option( "-o", "--out", default=None,
+        help="Audio output device. See http://xiph.org/ao/doc/ for supported drivers. Defaults to pulse."
         )
-    parser.add_option( "-d", "--musicdir", help="Library directory", default=os.environ["HOME"])
-    parser.add_option( "-q", "--enqueue",  help="Enqueue the tracks named on the command line.", action="store_true", default=False)
-    parser.add_option( "-p", "--playlist", help="A file to initialize the playlist from.")
-    parser.add_option( "-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.")
+    parser.add_option( "-d", "--musicdir", help="Library directory", default=None)
+    parser.add_option( "-q", "--enqueue",  help="Enqueue the tracks named on the command line.", action="store_true", default=None)
+    parser.add_option( "-p", "--playlist", help="A file to initialize the playlist from.", default=None)
+    parser.add_option( "-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.", default=None)
     options, posargs = parser.parse_args()
 
+    conf = ConfigParser()
+    conf.read(os.path.join(os.environ["HOME"], ".failplay", "failplay.conf"))
+
+    def getconf(value, default=None):
+        if getattr(options, value) is not None:
+            return getattr(options, value)
+        if conf.has_option("options", value):
+            return conf.get("options", value)
+        return default
 
     app = QtGui.QApplication( sys.argv )
-    ply = FailPlay(options.out, options.musicdir)
+    ply = FailPlay(getconf("out", "pulse"), getconf("musicdir", os.environ["HOME"]))
 
-    if options.playlist:
-        print "Loading playlist from", options.playlist
-        ply.playlist.loadpls(options.playlist)
+    playlistfile = getconf("playlist")
+    if playlistfile:
+        print "Loading playlist from", playlistfile
+        ply.playlist.loadpls(playlistfile)
 
+    enqueue = getconf("enqueue") in (True, "True")
     for filename in posargs:
-        if options.enqueue:
+        if enqueue:
             ply.playlist.enqueue(filename)
         else:
             ply.playlist.append(filename)
@@ -190,6 +201,7 @@ if __name__ == '__main__':
 
     app.exec_()
 
-    if options.writepls:
-        print "Saving playlist to", options.writepls
-        ply.playlist.writepls(options.writepls)
+    playlistfile = getconf("writepls")
+    if playlistfile:
+        print "Saving playlist to", playlistfile
+        ply.playlist.writepls(playlistfile)
