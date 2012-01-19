@@ -207,11 +207,20 @@ class Playlist(QtCore.QAbstractTableModel):
         return self
 
     def _remove(self, path):
-        if self.playlist.index(path) == self.current:
+        idx = self.playlist.index(path)
+        if idx == self.current:
             if self.current > 0:
                 self.current -= 1
             else:
                 self.current = None
+        if idx == self.repeat:
+            self.repeat = None
+        elif idx < self.repeat:
+            self.repeat -= 1
+        if idx == self.stopafter:
+            self.stopafter = None
+        elif idx < self.stopafter:
+            self.stopafter -= 1
 
         self.playlist_dirty = True
         self.playlist.remove(path)
@@ -236,6 +245,10 @@ class Playlist(QtCore.QAbstractTableModel):
         self.emit(Playlist.sig_insert, index, path)
         if index <= self.current:
             self.current += 1
+        if index <= self.repeat:
+            self.repeat += 1
+        if index <= self.stopafter:
+            self.stopafter += 1
 
     def insert(self, index, path):
         """ Insert a new file before the given index. """
