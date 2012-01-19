@@ -57,6 +57,7 @@ class Playlist(QtCore.QAbstractTableModel):
     sig_remove  = QtCore.SIGNAL( 'remove(const QString)' )
     sig_enqueue = QtCore.SIGNAL( 'enqueue(const QString)' )
     sig_dequeue = QtCore.SIGNAL( 'dequeue(const QString)' )
+    sig_datachg = QtCore.SIGNAL( 'dataChanged (const QModelIndex, const QModelIndex)' )
 
     def __init__(self):
         QtCore.QObject.__init__(self)
@@ -82,7 +83,7 @@ class Playlist(QtCore.QAbstractTableModel):
         self.repeat    = None
 
         files = [opt for opt in pls.options("playlist") if opt.startswith("file")]
-        files.sort()
+        files.sort( cmp=lambda a, b: cmp(int(a[4:]), int(b[4:])) ) # sort numerically by FileXY
         self.beginInsertRows(QtCore.QModelIndex(), 0, len(files) - 1)
         for fileopt in files:
             self.append( pls.get("playlist", fileopt) )
@@ -190,22 +191,23 @@ class Playlist(QtCore.QAbstractTableModel):
     def append(self, path):
         """ Append a new file to the playlist. """
         if path not in self.playlist:
+            self.beginInsertRows(QtCore.QModelIndex(), len(self), len(self))
             self.playlist_dirty = True
             self.playlist.append(path)
+            self.endInsertRows()
             self.emit(Playlist.sig_append, path)
         return self
 
     def _remove(self, path):
-        if path in self.playlist:
-            if self.playlist.index(path) == self.current:
-                if self.current > 0:
-                    self.current -= 1
-                else:
-                    self.current = None
+        if self.playlist.index(path) == self.current:
+            if self.current > 0:
+                self.current -= 1
+            else:
+                self.current = None
 
-            self.playlist_dirty = True
-            self.playlist.remove(path)
-            self.emit(Playlist.sig_remove, path)
+        self.playlist_dirty = True
+        self.playlist.remove(path)
+        self.emit(Playlist.sig_remove, path)
 
     def remove(self, path):
         """ Remove a file from the playlist.
@@ -213,23 +215,41 @@ class Playlist(QtCore.QAbstractTableModel):
             If it is also in the queue, it will be dequeued first.
         """
         self.dequeue(path)
-        self._remove(path)
+        if path in self.playlist:
+            idx = self.playlist.index(path)
+            self.beginRemoveRows(QtCore.QModelIndex(), idx, idx)
+            self._remove(path)
+            self.endRemoveRows()
         return self
+
+    def _insert(self, index, path):
+        self.playlist_dirty = True
+        self.playlist.insert(index, path)
+        self.emit(Playlist.sig_insert, index, path)
+        if index <= self.current:
+            self.current += 1
 
     def insert(self, index, path):
         """ Insert a new file before the given index. """
         if path not in self.playlist:
-            self.playlist_dirty = True
-            self.playlist.insert(index, path)
-            self.emit(Playlist.sig_insert, index, path)
-            if index <= self.current:
-                self.current += 1
+            self.beginInsertRows(QtCore.QModelIndex(), index, index)
+            self._insert(index, path)
+            self.endInsertRows()
         return self
 
     def move(self, index, path):
         """ Move a file to the given index without changing its status in the queue. """
+        oldidx = self.index(path)
+        if oldidx == index:
+            return self
+        self.beginMoveRows(QtCore.QModelIndex(), oldidx, oldidx, QtCore.QModelIndex(), index)
+        if oldidx == self.stopafter:
+            self.stopafter = index
+        if oldidx == self.repeat:
+            self.repeat = index
         self._remove(path)
-        self.insert(path, index)
+        self._insert(path, index)
+        self.endMoveRows()
         return self
 
     def enqueue(self, path):
@@ -240,6 +260,7 @@ class Playlist(QtCore.QAbstractTableModel):
             self.jmpqueue_dirty = True
             self.jmpqueue.append(path)
             self.emit(Playlist.sig_enqueue, path)
+            self._emit_changed(path)
         return self
 
     def dequeue(self, path):
@@ -248,7 +269,38 @@ class Playlist(QtCore.QAbstractTableModel):
             self.jmpqueue_dirty = True
             self.jmpqueue.remove(path)
             self.emit(Playlist.sig_dequeue, path)
+            self._emit_changed(path)
         return self
+
+
+    def toggleQueue(self, path):
+        if path in self.playlist.jmpqueue:
+            self.playlist.dequeue(path)
+        else:
+            self.playlist.enqueue(path)
+
+    def toggleRepeat(self, path):
+        idx = self.playlist.index(path)
+        if self.repeat == idx:
+            self.repeat = None
+        else:
+            oldidx = self.repeat
+            self.repeat = idx
+            if oldidx is not None:
+                self._emit_changed( self.playlist[oldidx] )
+        self._emit_changed(path)
+
+    def toggleStopAfter(self, path):
+        idx = self.playlist.index(path)
+        if self.stopafter == idx:
+            self.stopafter = None
+        else:
+            oldidx = self.stopafter
+            self.stopafter = idx
+            if oldidx is not None:
+                self._emit_changed( self.playlist[oldidx] )
+        self._emit_changed(path)
+
 
     @property
     def qlen(self):
@@ -268,10 +320,41 @@ class Playlist(QtCore.QAbstractTableModel):
 
 
     # QAbstractTableModel methods
+    def _emit_changed(self, path):
+        idx = self.playlist.index(path)
+        self.emit( self.sig_datachg,
+            self.index(idx, 1, QtCore.QModelIndex()),
+            self.index(idx, 1, QtCore.QModelIndex()) )
+
+    def __getitem__(self, index):
+        """ Return the path of the title at <index>. Index may be an int or a QModelIndex. """
+        if isinstance(index, QtCore.QModelIndex):
+            return self.playlist[index.row()]
+        return self.playlist[index]
 
     def data(self, index, role):
-        print "data(%dx%d, %d)" % (index.row(), index.column(), role)
+        #print "data(%dx%d, %d)" % (index.row(), index.column(), role)
         path = self.playlist[index.row()]
+
+        #AccessibleDescriptionRole 12
+        #AccessibleTextRole 11
+        #BackgroundColorRole 8
+        #BackgroundRole 8
+        #CheckStateRole 10
+        #DecorationRole 1
+        #DisplayRole 0
+        #EditRole 2
+        #FontRole 6
+        #ForegroundRole 9
+        #ItemDataRole <class 'PyQt4.QtCore.ItemDataRole'>
+        #SizeHintRole 13
+        #StatusTipRole 4
+        #TextAlignmentRole 7
+        #TextColorRole 9
+        #ToolTipRole 3
+        #UserRole 32
+        #WhatsThisRole 5
+
 
         if index.column() == 0:
             if role == Qt.Qt.DisplayRole:
@@ -280,15 +363,16 @@ class Playlist(QtCore.QAbstractTableModel):
                 return path
 
         elif index.column() == 1:
-            modifiers = []
-            if path in self.jmpqueue:
-                modifiers.append( unicode(self.jmpqueue.index(path) + 1) )
-            if index.row() == self.repeat:
-                modifiers.append( u'♻' )
-            if index.row() == self.stopafter:
-                # http://www.decodeunicode.org/de/geometric_shapes
-                modifiers.append( u'◾' ) #■◾◼
-            return ''.join(modifiers)
+            if role == Qt.Qt.DisplayRole:
+                modifiers = []
+                if path in self.jmpqueue:
+                    modifiers.append( unicode(self.jmpqueue.index(path) + 1) )
+                if index.row() == self.repeat:
+                    modifiers.append( u'♻' )
+                if index.row() == self.stopafter:
+                    # http://www.decodeunicode.org/de/geometric_shapes
+                    modifiers.append( u'◾' ) #■◾◼
+                return ''.join(modifiers)
 
     def columnCount(self, parent):
         return 2
