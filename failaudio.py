@@ -323,16 +323,22 @@ class Playlist(QtCore.QAbstractTableModel):
 
     # QAbstractTableModel methods
     def _emit_changed(self, path):
-        idx = self.playlist.index(path)
-        self.emit( self.sig_datachg,
-            self.index(idx, 1, QtCore.QModelIndex()),
-            self.index(idx, 1, QtCore.QModelIndex()) )
+        idx = self.index(path, 1)
+        self.emit( self.sig_datachg, idx, idx )
 
     def __getitem__(self, index):
         """ Return the path of the title at <index>. Index may be an int or a QModelIndex. """
         if isinstance(index, QtCore.QModelIndex):
             return self.playlist[index.row()]
         return self.playlist[index]
+
+    def index(self, path_or_index, column=0, parent=QtCore.QModelIndex()):
+        if isinstance( path_or_index, int ):
+            return QtCore.QAbstractTableModel.index(self, path_or_index, column, parent)
+
+        idx = self.playlist.index(path_or_index)
+        return QtCore.QAbstractTableModel.index(self, idx, 0, QtCore.QModelIndex())
+
 
     def data(self, index, role):
         path = self.playlist[index.row()]
