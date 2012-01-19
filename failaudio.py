@@ -260,16 +260,18 @@ class Playlist(QtCore.QAbstractTableModel):
 
     def move(self, index, path):
         """ Move a file to the given index without changing its status in the queue. """
-        oldidx = self.indexOf(path)
+        oldidx = self.playlist.index(path)
         if oldidx == index:
             return self
         self.beginMoveRows(QtCore.QModelIndex(), oldidx, oldidx, QtCore.QModelIndex(), index)
-        if oldidx == self.stopafter:
-            self.stopafter = index
-        if oldidx == self.repeat:
-            self.repeat = index
+        repeat    = (oldidx == self.repeat)
+        stopafter = (oldidx == self.stopafter)
         self._remove(path)
         self._insert(index, path)
+        if stopafter:
+            self.stopafter = index
+        if repeat:
+            self.repeat = index
         self.endMoveRows()
         return self
 
