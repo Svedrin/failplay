@@ -4,6 +4,7 @@
 
 from time import time
 
+from PyQt4 import Qt
 from PyQt4 import QtCore
 
 import audioop
@@ -48,7 +49,7 @@ class Source(QtCore.QObject):
         return self.gen
 
 
-class Playlist(QtCore.QObject):
+class Playlist(QtCore.QAbstractTableModel):
     """ Playlist management object. """
 
     sig_append  = QtCore.SIGNAL( 'append(const QString)' )
@@ -82,8 +83,10 @@ class Playlist(QtCore.QObject):
 
         files = [opt for opt in pls.options("playlist") if opt.startswith("file")]
         files.sort()
+        self.beginInsertRows(QtCore.QModelIndex(), 0, len(files) - 1)
         for fileopt in files:
             self.append( pls.get("playlist", fileopt) )
+        self.endInsertRows()
 
         if pls.has_section("failplay"):
             def intOrNone(name):
@@ -262,6 +265,40 @@ class Playlist(QtCore.QObject):
         """ Iterate over the playlist. """
         while True:
             yield self.next()
+
+
+    # QAbstractTableModel methods
+
+    def data(self, index, role):
+        print "data(%dx%d, %d)" % (index.row(), index.column(), role)
+        path = self.playlist[index.row()]
+
+        if index.column() == 0:
+            if role == Qt.Qt.DisplayRole:
+                return self._parse_title(path)
+            elif role == Qt.Qt.UserRole:
+                return path
+
+        elif index.column() == 1:
+            modifiers = []
+            if path in self.jmpqueue:
+                modifiers.append( unicode(self.jmpqueue.index(path) + 1) )
+            if index.row() == self.repeat:
+                modifiers.append( u'♻' )
+            if index.row() == self.stopafter:
+                # http://www.decodeunicode.org/de/geometric_shapes
+                modifiers.append( u'◾' ) #■◾◼
+            return ''.join(modifiers)
+
+    def columnCount(self, parent):
+        return 2
+
+    def rowCount(self, parent):
+        if parent != QtCore.QModelIndex():
+            return 0
+        return len(self)
+
+
 
 
 class Player(QtCore.QObject, threading.Thread):
