@@ -67,6 +67,8 @@ class Playlist(QtCore.QAbstractTableModel):
         self.stopafter = None
         self.repeat    = None
 
+        self.currentBg = None
+
         self.playlist_dirty = False
         self.jmpqueue_dirty = False
 
@@ -354,9 +356,11 @@ class Playlist(QtCore.QAbstractTableModel):
         #ToolTipRole 3
         #UserRole 32
         #WhatsThisRole 5
+        if role == Qt.Qt.BackgroundRole:
+            if index.row() == self.current and self.currentBg is not None:
+                return self.currentBg
 
-
-        if index.column() == 0:
+        elif index.column() == 0:
             if role == Qt.Qt.DisplayRole:
                 return self._parse_title(path)
             elif role == Qt.Qt.UserRole:

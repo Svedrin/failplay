@@ -35,6 +35,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.connect( self.lstPlaylist, QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.toggleQueue )
 
+        self.playlist.currentBg = QtGui.QBrush(Qt.Qt.cyan, Qt.Qt.SolidPattern)
         self.lstPlaylist.setModel(self.playlist)
 
         # build playlist context menu
