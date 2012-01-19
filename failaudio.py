@@ -380,42 +380,33 @@ class Playlist(QtCore.QAbstractTableModel):
         return len(self)
 
     def supportedDragActions(self):
-        print u"drag actionés!"
         return Qt.Qt.MoveAction
 
     def supportedDropActions(self):
-        print u"drop actionés!"
         return Qt.Qt.CopyAction|Qt.Qt.MoveAction
 
     def mimeTypes(self):
-        print u"mime types!"
         return ["text/uri-list"]
 
     def dropMimeData(self, data, action, row, column, parent):
-        print u"drop mime data!", data, action, row, column, parent, parent.row()
         if action == Qt.Qt.IgnoreAction:
             return True
         if row == -1 and parent.isValid():
             row = parent.row()
         if data.hasUrls() and row != -1:
-            print "We can haz URLs!"
             for url in data.urls():
                 url = url.path().toLocal8Bit().data()
                 if url in self:
-                    print "MOVE!", url
                     self.move(row, url)
                 elif row < len(self):
-                    print "INSERT!", url
                     self.insert(row, url)
                 else:
-                    print "APPEND!", url
                     self.append(url)
                 row += 1
             return True
         return False
 
     def mimeData(self, index):
-        print u"mime data!"
         data = QtCore.QMimeData()
         data.setUrls([ QtCore.QUrl(self[ index[0] ]) ])
         return data
