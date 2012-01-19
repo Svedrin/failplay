@@ -33,7 +33,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.connect( self.lstLibrary,  QtCore.SIGNAL("itemDoubleClicked(QListWidgetItem *)"), self.append )
 
-        self.connect( self.lstPlaylist, QtCore.SIGNAL("itemDoubleClicked(QListWidgetItem *)"), self.toggleEnqueue )
+        self.connect( self.lstPlaylist, QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.toggleQueue )
 
         self.lstPlaylist.setModel(self.playlist)
 
@@ -78,42 +78,28 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         path = item.data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
         self.playlist.append( path )
 
-    def toggleEnqueue(self, item):
-        path = item.data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
-        if path in self.playlist.jmpqueue:
-            self.playlist.dequeue(path)
-        else:
-            self.playlist.enqueue(path)
+    def toggleQueue(self, index):
+        self.playlist.toggleQueue( self.playlist[index] )
 
     def remove(self):
-        path = self.lstPlaylist.currentItem().data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
-        self.playlist.remove(path)
+        index = self.lstPlaylist.selectedIndexes()[0]
+        self.playlist.remove( self.playlist[index] )
 
     def enqueue(self):
-        path = self.lstPlaylist.currentItem().data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
-        self.playlist.enqueue(path)
+        index = self.lstPlaylist.selectedIndexes()[0]
+        self.playlist.enqueue( self.playlist[index] )
 
     def dequeue(self):
-        path = self.lstPlaylist.currentItem().data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
-        self.playlist.dequeue(path)
+        index = self.lstPlaylist.selectedIndexes()[0]
+        self.playlist.dequeue( self.playlist[index] )
 
     def repeat(self):
-        path = self.lstPlaylist.currentItem().data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
-        idx = self.playlist.playlist.index(path)
-        if self.playlist.repeat == idx:
-            self.playlist.repeat = None
-        else:
-            self.playlist.repeat = idx
-        self.update_playlist()
+        index = self.lstPlaylist.selectedIndexes()[0]
+        self.playlist.toggleRepeat( self.playlist[index] )
 
     def stopafter(self):
-        path = self.lstPlaylist.currentItem().data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
-        idx = self.playlist.playlist.index(path)
-        if self.playlist.stopafter == idx:
-            self.playlist.stopafter = None
-        else:
-            self.playlist.stopafter = idx
-        self.update_playlist()
+        index = self.lstPlaylist.selectedIndexes()[0]
+        self.playlist.toggleStopAfter( self.playlist[index] )
 
     def closeEvent(self, ev):
         self.player.stop()
