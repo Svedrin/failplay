@@ -26,14 +26,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.setupUi(self)
 
-        self.connect( self.player,           Player.sig_started,             self.update_playlist      )
         self.connect( self.player,           Player.sig_stopped,             self.close                )
-
-        self.connect( self.playlist,         Playlist.sig_append,            self.update_playlist      )
-        self.connect( self.playlist,         Playlist.sig_insert,            self.update_playlist      )
-        self.connect( self.playlist,         Playlist.sig_remove,            self.update_playlist      )
-        self.connect( self.playlist,         Playlist.sig_enqueue,           self.update_playlist      )
-        self.connect( self.playlist,         Playlist.sig_dequeue,           self.update_playlist      )
 
         self.connect( self.player,           Player.sig_position_normal,     self.status_update_normal )
         self.connect( self.player,           Player.sig_position_trans,      self.status_update_trans  )
@@ -41,6 +34,8 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.connect( self.lstLibrary,  QtCore.SIGNAL("itemDoubleClicked(QListWidgetItem *)"), self.append )
 
         self.connect( self.lstPlaylist, QtCore.SIGNAL("itemDoubleClicked(QListWidgetItem *)"), self.toggleEnqueue )
+
+        self.lstPlaylist.setModel(self.playlist)
 
         # build playlist context menu
         self.actRemove = QtGui.QAction("Remove", self.lstPlaylist)
@@ -144,31 +139,6 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self._status_update(self.pgbSongProgressPrev, prev)
         self.sldCrossfade.setValue((1 - fac) * 100)
 
-    def update_playlist(self):
-        self.lstPlaylist.clear()
-        print "Redraw.", self.playlist.current
-        for idx, path in enumerate(self.playlist.playlist):
-            item = QtGui.QListWidgetItem()
-
-            display = path.rsplit( '/', 1 )[1].rsplit('.', 1)[0]
-            modifiers = []
-            if path in self.playlist.jmpqueue:
-                modifiers.append( unicode(self.playlist.jmpqueue.index(path) + 1) )
-            if idx == self.playlist.repeat:
-                modifiers.append( u'♻' )
-            if idx == self.playlist.stopafter:
-                # http://www.decodeunicode.org/de/geometric_shapes
-                modifiers.append( u'◾' ) #■◾◼
-            if modifiers:
-                display += " [%s]" % ''.join(modifiers)
-            item.setData(Qt.Qt.DisplayRole, display)
-
-            item.setData(Qt.Qt.UserRole, path)
-
-            if idx == self.playlist.current:
-                item.setBackground( QtGui.QBrush(Qt.Qt.cyan, Qt.Qt.SolidPattern) )
-
-            self.lstPlaylist.addItem(item)
 
 
 if __name__ == '__main__':
