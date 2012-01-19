@@ -42,6 +42,9 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         hdr.hideSection(2)
         hdr.hideSection(3)
         self.lstLibrary.setHeader(hdr)
+        self.library.setNameFilterDisables(False)
+
+        self.connect( self.leLibraryFilter, QtCore.SIGNAL("textEdited(QString)"), self.updateFilter )
         self.connect( self.lstLibrary,  QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.append )
 
         self.connect( self.lstPlaylist, QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.toggleQueue )
@@ -77,6 +80,12 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.lstPlaylist.insertAction(None, self.actStopAfter)
 
         self.show()
+
+    def updateFilter(self, text):
+        if text:
+            self.library.setNameFilters(["*" + text + "*"])
+        else:
+            self.library.setNameFilters([])
 
     def start(self):
         self.player.start()

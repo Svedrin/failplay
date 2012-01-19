@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'failplay.ui'
 #
-# Created: Thu Jan 19 22:08:29 2012
+# Created: Thu Jan 19 23:33:24 2012
 #      by: PyQt4 UI code generator 4.9
 #
 # WARNING! All changes made in this file will be lost!
@@ -20,8 +20,8 @@ class Ui_MainWindow(object):
         MainWindow.resize(632, 469)
         self.centralwidget = QtGui.QWidget(MainWindow)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
-        self.verticalLayout_2 = QtGui.QVBoxLayout(self.centralwidget)
-        self.verticalLayout_2.setObjectName(_fromUtf8("verticalLayout_2"))
+        self.verticalLayout_3 = QtGui.QVBoxLayout(self.centralwidget)
+        self.verticalLayout_3.setObjectName(_fromUtf8("verticalLayout_3"))
         self.splitter = QtGui.QSplitter(self.centralwidget)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
@@ -30,13 +30,22 @@ class Ui_MainWindow(object):
         self.splitter.setSizePolicy(sizePolicy)
         self.splitter.setOrientation(QtCore.Qt.Horizontal)
         self.splitter.setObjectName(_fromUtf8("splitter"))
-        self.lstLibrary = QtGui.QTreeView(self.splitter)
+        self.widget = QtGui.QWidget(self.splitter)
+        self.widget.setObjectName(_fromUtf8("widget"))
+        self.verticalLayout_2 = QtGui.QVBoxLayout(self.widget)
+        self.verticalLayout_2.setMargin(0)
+        self.verticalLayout_2.setObjectName(_fromUtf8("verticalLayout_2"))
+        self.lstLibrary = QtGui.QTreeView(self.widget)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(5)
         sizePolicy.setHeightForWidth(self.lstLibrary.sizePolicy().hasHeightForWidth())
         self.lstLibrary.setSizePolicy(sizePolicy)
         self.lstLibrary.setObjectName(_fromUtf8("lstLibrary"))
+        self.verticalLayout_2.addWidget(self.lstLibrary)
+        self.leLibraryFilter = QtGui.QLineEdit(self.widget)
+        self.leLibraryFilter.setObjectName(_fromUtf8("leLibraryFilter"))
+        self.verticalLayout_2.addWidget(self.leLibraryFilter)
         self.lstPlaylist = QtGui.QTableView(self.splitter)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
@@ -47,10 +56,11 @@ class Ui_MainWindow(object):
         self.lstPlaylist.setAcceptDrops(True)
         self.lstPlaylist.setDragEnabled(True)
         self.lstPlaylist.setDragDropMode(QtGui.QAbstractItemView.DragDrop)
+        self.lstPlaylist.setDefaultDropAction(QtCore.Qt.MoveAction)
         self.lstPlaylist.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.lstPlaylist.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.lstPlaylist.setObjectName(_fromUtf8("lstPlaylist"))
-        self.verticalLayout_2.addWidget(self.splitter)
+        self.verticalLayout_3.addWidget(self.splitter)
         self.horizontalLayout_2 = QtGui.QHBoxLayout()
         self.horizontalLayout_2.setSizeConstraint(QtGui.QLayout.SetMinimumSize)
         self.horizontalLayout_2.setObjectName(_fromUtf8("horizontalLayout_2"))
@@ -83,7 +93,7 @@ class Ui_MainWindow(object):
         self.sldCrossfade.setOrientation(QtCore.Qt.Vertical)
         self.sldCrossfade.setObjectName(_fromUtf8("sldCrossfade"))
         self.horizontalLayout_2.addWidget(self.sldCrossfade)
-        self.verticalLayout_2.addLayout(self.horizontalLayout_2)
+        self.verticalLayout_3.addLayout(self.horizontalLayout_2)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 632, 22))
@@ -98,6 +108,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "FailPlay", None, QtGui.QApplication.UnicodeUTF8))
+        self.leLibraryFilter.setPlaceholderText(QtGui.QApplication.translate("MainWindow", "Search...", None, QtGui.QApplication.UnicodeUTF8))
         self.pgbSongProgress.setFormat(QtGui.QApplication.translate("MainWindow", "Idle", None, QtGui.QApplication.UnicodeUTF8))
         self.pgbSongProgressPrev.setFormat(QtGui.QApplication.translate("MainWindow", "Idle", None, QtGui.QApplication.UnicodeUTF8))
 
