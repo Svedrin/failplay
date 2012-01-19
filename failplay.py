@@ -36,6 +36,9 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.lstLibrary.setModel(self.library)
         self.lstLibrary.setRootIndex(self.library.index(librarydir))
         hdr = self.lstLibrary.header()
+        hdr.setResizeMode(0, QtGui.QHeaderView.Stretch)
+        hdr.resizeSection(1, 75)
+        hdr.setResizeMode(1, QtGui.QHeaderView.Fixed)
         hdr.hideSection(2)
         hdr.hideSection(3)
         self.lstLibrary.setHeader(hdr)
@@ -45,6 +48,12 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.playlist.currentBg = QtGui.QBrush(Qt.Qt.cyan, Qt.Qt.SolidPattern)
         self.lstPlaylist.setModel(self.playlist)
+
+        hderp = self.lstPlaylist.horizontalHeader()
+        hderp.setResizeMode(0, QtGui.QHeaderView.Stretch)
+        hderp.resizeSection(1, 50)
+        hderp.setResizeMode(1, QtGui.QHeaderView.Fixed)
+        self.lstPlaylist.setHorizontalHeader(hderp)
 
         # build playlist context menu
         self.actRemove = QtGui.QAction("Remove", self.lstPlaylist)
