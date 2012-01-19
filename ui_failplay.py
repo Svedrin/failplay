@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'failplay.ui'
 #
-# Created: Thu Jan 19 23:33:24 2012
+# Created: Fri Jan 20 00:11:24 2012
 #      by: PyQt4 UI code generator 4.9
 #
 # WARNING! All changes made in this file will be lost!
@@ -41,6 +41,8 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(5)
         sizePolicy.setHeightForWidth(self.lstLibrary.sizePolicy().hasHeightForWidth())
         self.lstLibrary.setSizePolicy(sizePolicy)
+        self.lstLibrary.setDragEnabled(True)
+        self.lstLibrary.setDragDropMode(QtGui.QAbstractItemView.DragOnly)
         self.lstLibrary.setObjectName(_fromUtf8("lstLibrary"))
         self.verticalLayout_2.addWidget(self.lstLibrary)
         self.leLibraryFilter = QtGui.QLineEdit(self.widget)
@@ -49,7 +51,7 @@ class Ui_MainWindow(object):
         self.lstPlaylist = QtGui.QTableView(self.splitter)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(5)
+        sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.lstPlaylist.sizePolicy().hasHeightForWidth())
         self.lstPlaylist.setSizePolicy(sizePolicy)
         self.lstPlaylist.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
