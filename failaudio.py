@@ -373,8 +373,32 @@ class Playlist(QtCore.QAbstractTableModel):
             return 0
         return len(self)
 
+    def supportedDragActions(self):
+        print u"drag actionés!"
+        return Qt.Qt.MoveAction
 
+    def supportedDropActions(self):
+        print u"drop actionés!"
+        return Qt.Qt.CopyAction|Qt.Qt.MoveAction
 
+    def mimeTypes(self):
+        print u"mime types!"
+        return ["text/uri-list"]
+
+    def dropMimeData(self, data, action, row, column, parent):
+        print u"drop mime data!"
+        if data.hasUrls() and row != -1:
+            for url in data.urls():
+                if url.startswith("file://"):
+                    url = url[7:]
+                self.insert(row, url)
+                row += 1
+
+    def mimeData(self, index):
+        print u"mime data!"
+        data = QtCore.QMimeData()
+        data.setUrls([self[index]])
+        return data
 
 class Player(QtCore.QObject, threading.Thread):
     sig_transition_start = QtCore.SIGNAL( 'transition_start(const PyQt_PyObject, const PyQt_PyObject)' )
