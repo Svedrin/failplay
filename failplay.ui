@@ -26,7 +26,7 @@
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="QListWidget" name="lstLibrary">
+      <widget class="QTreeView" name="lstLibrary">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>0</horstretch>
@@ -44,11 +44,20 @@
        <property name="contextMenuPolicy">
         <enum>Qt::ActionsContextMenu</enum>
        </property>
+       <property name="acceptDrops">
+        <bool>true</bool>
+       </property>
+       <property name="dragEnabled">
+        <bool>true</bool>
+       </property>
        <property name="dragDropMode">
-        <enum>QAbstractItemView::InternalMove</enum>
+        <enum>QAbstractItemView::DragDrop</enum>
        </property>
        <property name="selectionMode">
         <enum>QAbstractItemView::SingleSelection</enum>
+       </property>
+       <property name="selectionBehavior">
+        <enum>QAbstractItemView::SelectRows</enum>
        </property>
       </widget>
      </widget>

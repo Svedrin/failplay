@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'failplay.ui'
 #
-# Created: Thu Jan 19 20:00:11 2012
+# Created: Thu Jan 19 22:08:29 2012
 #      by: PyQt4 UI code generator 4.9
 #
 # WARNING! All changes made in this file will be lost!
@@ -30,7 +30,7 @@ class Ui_MainWindow(object):
         self.splitter.setSizePolicy(sizePolicy)
         self.splitter.setOrientation(QtCore.Qt.Horizontal)
         self.splitter.setObjectName(_fromUtf8("splitter"))
-        self.lstLibrary = QtGui.QListWidget(self.splitter)
+        self.lstLibrary = QtGui.QTreeView(self.splitter)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(5)
@@ -44,8 +44,11 @@ class Ui_MainWindow(object):
         sizePolicy.setHeightForWidth(self.lstPlaylist.sizePolicy().hasHeightForWidth())
         self.lstPlaylist.setSizePolicy(sizePolicy)
         self.lstPlaylist.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
-        self.lstPlaylist.setDragDropMode(QtGui.QAbstractItemView.InternalMove)
+        self.lstPlaylist.setAcceptDrops(True)
+        self.lstPlaylist.setDragEnabled(True)
+        self.lstPlaylist.setDragDropMode(QtGui.QAbstractItemView.DragDrop)
         self.lstPlaylist.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+        self.lstPlaylist.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.lstPlaylist.setObjectName(_fromUtf8("lstPlaylist"))
         self.verticalLayout_2.addWidget(self.splitter)
         self.horizontalLayout_2 = QtGui.QHBoxLayout()
