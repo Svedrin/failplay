@@ -190,6 +190,12 @@ class Playlist(QtCore.QAbstractTableModel):
     def title(self):
         return self._parse_title(self.path)
 
+    def indexOf(self, path):
+        return self.playlist.index(path)
+
+    def __contains__(self, path):
+        return path in self.playlist
+
     def append(self, path):
         """ Append a new file to the playlist. """
         if path not in self.playlist:
@@ -241,7 +247,7 @@ class Playlist(QtCore.QAbstractTableModel):
 
     def move(self, index, path):
         """ Move a file to the given index without changing its status in the queue. """
-        oldidx = self.index(path)
+        oldidx = self.indexOf(path)
         if oldidx == index:
             return self
         self.beginMoveRows(QtCore.QModelIndex(), oldidx, oldidx, QtCore.QModelIndex(), index)
@@ -250,7 +256,7 @@ class Playlist(QtCore.QAbstractTableModel):
         if oldidx == self.repeat:
             self.repeat = index
         self._remove(path)
-        self._insert(path, index)
+        self._insert(index, path)
         self.endMoveRows()
         return self
 
@@ -386,19 +392,42 @@ class Playlist(QtCore.QAbstractTableModel):
         return ["text/uri-list"]
 
     def dropMimeData(self, data, action, row, column, parent):
-        print u"drop mime data!"
+        print u"drop mime data!", data, action, row, column, parent, parent.row()
+        if action == Qt.Qt.IgnoreAction:
+            return True
+        if row == -1 and parent.isValid():
+            row = parent.row()
         if data.hasUrls() and row != -1:
+            print "We can haz URLs!"
             for url in data.urls():
-                if url.startswith("file://"):
-                    url = url[7:]
-                self.insert(row, url)
+                url = url.path().toLocal8Bit().data()
+                if url in self:
+                    print "MOVE!", url
+                    self.move(row, url)
+                elif row < len(self):
+                    print "INSERT!", url
+                    self.insert(row, url)
+                else:
+                    print "APPEND!", url
+                    self.append(url)
                 row += 1
+            return True
+        return False
 
     def mimeData(self, index):
         print u"mime data!"
         data = QtCore.QMimeData()
-        data.setUrls([self[index]])
+        data.setUrls([ QtCore.QUrl(self[ index[0] ]) ])
         return data
+
+    def flags(self, index):
+        defaultFlags = QtCore.QAbstractTableModel.flags(self, index)
+        if index.isValid():
+            return Qt.Qt.ItemIsDragEnabled | Qt.Qt.ItemIsDropEnabled | defaultFlags
+        else:
+            return Qt.Qt.ItemIsDropEnabled | defaultFlags
+
+
 
 class Player(QtCore.QObject, threading.Thread):
     sig_transition_start = QtCore.SIGNAL( 'transition_start(const PyQt_PyObject, const PyQt_PyObject)' )
