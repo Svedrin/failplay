@@ -335,27 +335,8 @@ class Playlist(QtCore.QAbstractTableModel):
         return self.playlist[index]
 
     def data(self, index, role):
-        #print "data(%dx%d, %d)" % (index.row(), index.column(), role)
         path = self.playlist[index.row()]
 
-        #AccessibleDescriptionRole 12
-        #AccessibleTextRole 11
-        #BackgroundColorRole 8
-        #BackgroundRole 8
-        #CheckStateRole 10
-        #DecorationRole 1
-        #DisplayRole 0
-        #EditRole 2
-        #FontRole 6
-        #ForegroundRole 9
-        #ItemDataRole <class 'PyQt4.QtCore.ItemDataRole'>
-        #SizeHintRole 13
-        #StatusTipRole 4
-        #TextAlignmentRole 7
-        #TextColorRole 9
-        #ToolTipRole 3
-        #UserRole 32
-        #WhatsThisRole 5
         if role == Qt.Qt.BackgroundRole:
             if index.row() == self.current and self.currentBg is not None:
                 return self.currentBg
