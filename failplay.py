@@ -31,7 +31,15 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.connect( self.player,           Player.sig_position_normal,     self.status_update_normal )
         self.connect( self.player,           Player.sig_position_trans,      self.status_update_trans  )
 
-        self.connect( self.lstLibrary,  QtCore.SIGNAL("itemDoubleClicked(QListWidgetItem *)"), self.append )
+        self.library = QtGui.QFileSystemModel()
+        self.library.setRootPath(librarydir)
+        self.lstLibrary.setModel(self.library)
+        self.lstLibrary.setRootIndex(self.library.index(librarydir))
+        hdr = self.lstLibrary.header()
+        hdr.hideSection(2)
+        hdr.hideSection(3)
+        self.lstLibrary.setHeader(hdr)
+        self.connect( self.lstLibrary,  QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.append )
 
         self.connect( self.lstPlaylist, QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.toggleQueue )
 
@@ -59,25 +67,13 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.connect( self.actStopAfter, QtCore.SIGNAL("triggered(bool)"), self.stopafter)
         self.lstPlaylist.insertAction(None, self.actStopAfter)
 
-        # populate library list
-        musicfiles = os.listdir(librarydir)
-        musicfiles.sort()
-        for fname in musicfiles:
-            path = os.path.join(librarydir, fname)
-            if os.path.isfile(path):
-                item = QtGui.QListWidgetItem()
-                item.setData(Qt.Qt.DisplayRole, fname)
-                item.setData(Qt.Qt.UserRole, path)
-                self.lstLibrary.addItem(item)
-
         self.show()
 
     def start(self):
         self.player.start()
 
-    def append(self, item):
-        path = item.data(Qt.Qt.UserRole).toString().toLocal8Bit().data()
-        self.playlist.append( path )
+    def append(self, index):
+        self.playlist.append( self.library.filePath(index).toLocal8Bit().data() )
 
     def toggleQueue(self, index):
         self.playlist.toggleQueue( self.playlist[index] )
