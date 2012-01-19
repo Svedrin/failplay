@@ -274,10 +274,10 @@ class Playlist(QtCore.QAbstractTableModel):
 
 
     def toggleQueue(self, path):
-        if path in self.playlist.jmpqueue:
-            self.playlist.dequeue(path)
+        if path in self.jmpqueue:
+            self.dequeue(path)
         else:
-            self.playlist.enqueue(path)
+            self.enqueue(path)
 
     def toggleRepeat(self, path):
         idx = self.playlist.index(path)
