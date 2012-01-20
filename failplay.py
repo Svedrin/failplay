@@ -79,8 +79,6 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.connect( self.actStopAfter, QtCore.SIGNAL("triggered(bool)"), self.stopafter)
         self.lstPlaylist.insertAction(None, self.actStopAfter)
 
-        self.show()
-
     def updateFilter(self, text):
         if text:
             self.library.setNameFilters(["*" + text + "*"])
@@ -182,6 +180,7 @@ if __name__ == '__main__':
         else:
             ply.playlist.append(filename)
 
+    ply.show()
     ply.start()
 
     app.exec_()
