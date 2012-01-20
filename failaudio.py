@@ -587,9 +587,9 @@ if __name__ == '__main__':
 
     #player.connect( player, Player.sig_position_normal, printer.showstatus_normal     )
     #player.connect( player, Player.sig_position_trans,  printer.showstatus_transition )
-    player.connect( player, Player.sig_started,         printer.showstatus_started    )
-    player.connect( player, Player.sig_stopped,         printer.showstatus_stop       )
-    player.connect( player, Player.sig_stopped,         app.quit                      )
+    player.connect( player, Player.sig_started, printer.showstatus_started )
+    player.connect( player, Player.sig_stopped, printer.showstatus_stop    )
+    player.connect( player, Player.sig_stopped, app.quit )
 
     print "OK, here we go - hit q to exit."
 

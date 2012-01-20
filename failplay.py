@@ -5,8 +5,8 @@
 import os, sys
 import struct
 
-from datetime     import timedelta
-from optparse     import OptionParser
+from datetime import timedelta
+from optparse import OptionParser
 from ConfigParser import ConfigParser
 
 from PyQt4 import Qt
@@ -40,10 +40,10 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.setupUi(self)
 
-        self.connect( self.player,           Player.sig_stopped,             self.close                )
+        self.connect( self.player, Player.sig_stopped, self.close )
 
-        self.connect( self.player,           Player.sig_position_normal,     self.status_update_normal )
-        self.connect( self.player,           Player.sig_position_trans,      self.status_update_trans  )
+        self.connect( self.player, Player.sig_position_normal, self.status_update_normal )
+        self.connect( self.player, Player.sig_position_trans,  self.status_update_trans  )
 
         self.library = QtGui.QFileSystemModel()
         self.library.setRootPath(librarydir)
@@ -96,7 +96,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         def mkShortcut(key, callback):
             shortcut = QtGui.QShortcut(QtGui.QKeySequence(key), self)
             shortcut.setContext(Qt.Qt.ApplicationShortcut)
-            self.connect( shortcut,    QtCore.SIGNAL("activated()"), callback )
+            self.connect( shortcut, QtCore.SIGNAL("activated()"), callback )
             return shortcut
 
         self.shortcutMisc    = mkShortcut(Qt.Qt.Key_Enter, self.handleMiscShortcut)
