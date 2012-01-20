@@ -61,22 +61,27 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         # build playlist context menu
         self.actRemove = QtGui.QAction("Remove", self.lstPlaylist)
         self.connect( self.actRemove, QtCore.SIGNAL("triggered(bool)"), self.remove)
+        self.actRemove.setShortcut(Qt.Qt.Key_Delete)
         self.lstPlaylist.insertAction(None, self.actRemove)
 
         self.actEnqueue = QtGui.QAction("Enqueue", self.lstPlaylist)
         self.connect( self.actEnqueue, QtCore.SIGNAL("triggered(bool)"), self.enqueue)
+        self.actEnqueue.setShortcut(Qt.Qt.Key_Plus)
         self.lstPlaylist.insertAction(None, self.actEnqueue)
 
         self.actDequeue = QtGui.QAction("Dequeue", self.lstPlaylist)
         self.connect( self.actDequeue, QtCore.SIGNAL("triggered(bool)"), self.dequeue)
+        self.actDequeue.setShortcut(Qt.Qt.Key_Minus)
         self.lstPlaylist.insertAction(None, self.actDequeue)
 
         self.actRepeat = QtGui.QAction("Repeat", self.lstPlaylist)
         self.connect( self.actRepeat, QtCore.SIGNAL("triggered(bool)"), self.repeat)
+        self.actRepeat.setShortcut(Qt.Qt.Key_R)
         self.lstPlaylist.insertAction(None, self.actRepeat)
 
         self.actStopAfter = QtGui.QAction("Stop after this track", self.lstPlaylist)
         self.connect( self.actStopAfter, QtCore.SIGNAL("triggered(bool)"), self.stopafter)
+        self.actStopAfter.setShortcut(Qt.Qt.Key_S)
         self.lstPlaylist.insertAction(None, self.actStopAfter)
 
         def mkShortcut(key, callback):
@@ -88,8 +93,6 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.shortcutMisc    = mkShortcut(Qt.Qt.Key_Enter, self.handleMiscShortcut)
         self.shortcutRepeatC = mkShortcut(Qt.Qt.Key_Space, self.repeatCurrent)
         self.shortcutEndC    = mkShortcut(Qt.Qt.Key_End,   self.stopAfterCurrent)
-        self.shortcutRepeatS = mkShortcut(Qt.Qt.Key_R,     self.repeat)
-        self.shortcutEndS    = mkShortcut(Qt.Qt.Key_S,     self.stopafter)
         self.shortcutQuit    = mkShortcut(Qt.Qt.Key_Q,     self.close)
 
     def handleMiscShortcut(self):
