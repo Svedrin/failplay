@@ -79,6 +79,34 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.connect( self.actStopAfter, QtCore.SIGNAL("triggered(bool)"), self.stopafter)
         self.lstPlaylist.insertAction(None, self.actStopAfter)
 
+        def mkShortcut(key, callback):
+            shortcut = QtGui.QShortcut(QtGui.QKeySequence(key), self)
+            shortcut.setContext(Qt.Qt.ApplicationShortcut)
+            self.connect( shortcut,    QtCore.SIGNAL("activated()"), callback )
+            return shortcut
+
+        self.shortcutMisc    = mkShortcut(Qt.Qt.Key_Enter, self.handleMiscShortcut)
+        self.shortcutRepeatC = mkShortcut(Qt.Qt.Key_Space, self.repeatCurrent)
+        self.shortcutEndC    = mkShortcut(Qt.Qt.Key_End,   self.stopAfterCurrent)
+        self.shortcutRepeatS = mkShortcut(Qt.Qt.Key_R,     self.repeat)
+        self.shortcutEndS    = mkShortcut(Qt.Qt.Key_S,     self.stopafter)
+        self.shortcutQuit    = mkShortcut(Qt.Qt.Key_Q,     self.close)
+
+    def handleMiscShortcut(self):
+        """ Toggle repeat if currently playing track is selected, en/dequeue otherwise. """
+        index = self.lstPlaylist.selectedIndexes()[0]
+        if index.row() == self.playlist.current:
+            return self.repeatCurrent()
+        return self.toggleQueue(self, index)
+
+    def repeatCurrent(self):
+        """ Toggle repeat for the currently playing track. """
+        self.playlist.toggleRepeat( self.playlist[ self.playlist.current ] )
+
+    def stopAfterCurrent(self):
+        """ Toggle stopAfter for the currently playing track. """
+        self.playlist.toggleStopAfter( self.playlist[ self.playlist.current ] )
+
     def updateFilter(self, text):
         if text:
             self.library.setNameFilters(["*" + text + "*"])
