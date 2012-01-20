@@ -3,6 +3,7 @@
 # kate: space-indent on; indent-width 4; replace-tabs on;
 
 import os, sys
+import struct
 
 from datetime     import timedelta
 from optparse     import OptionParser
@@ -14,6 +15,19 @@ from PyQt4 import QtGui
 
 from failaudio   import Playlist, Player
 from ui_failplay import Ui_MainWindow
+
+
+def mkIcon():
+    data = ""
+    for y in range(16):
+        for x in range(16):
+            v = (abs((8-y)/8.) <= abs(-(1/3.) * (x-8)/8. + (1/3.))) * 0xFF
+            data += struct.pack( "BBB", v, v, v )
+    img = QtGui.QImage(data, 16, 16, QtGui.QImage.Format_RGB888)
+    pm = QtGui.QPixmap()
+    pm.convertFromImage(img)
+    return QtGui.QIcon(pm)
+
 
 
 class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
@@ -89,6 +103,8 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.shortcutRepeatC = mkShortcut(Qt.Qt.Key_Space, self.repeatCurrent)
         self.shortcutEndC    = mkShortcut(Qt.Qt.Key_End,   self.stopAfterCurrent)
         self.shortcutQuit    = mkShortcut(Qt.Qt.Key_Q,     self.close)
+
+        self.setWindowIcon(mkIcon())
 
     def handleMiscShortcut(self):
         """ Toggle repeat if currently playing track is selected, en/dequeue otherwise. """
