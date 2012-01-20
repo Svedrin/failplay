@@ -324,6 +324,18 @@ class Playlist(QtCore.QAbstractTableModel):
                 self._emit_changed( self.playlist[oldidx] )
         self._emit_changed(path)
 
+    def headerData(self, section, orientation, role):
+        if role != Qt.Qt.DisplayRole:
+            return None
+
+        if orientation == Qt.Qt.Horizontal:
+            if section == 0:
+                return "Track"
+            elif section == 1:
+                return "Flags"
+
+        else:
+            return unicode(section + 1)
 
     @property
     def qlen(self):
