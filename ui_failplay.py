@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'failplay.ui'
 #
-# Created: Fri Jan 20 00:11:24 2012
+# Created: Fri Jan 20 20:38:10 2012
 #      by: PyQt4 UI code generator 4.9
 #
 # WARNING! All changes made in this file will be lost!
@@ -30,12 +30,12 @@ class Ui_MainWindow(object):
         self.splitter.setSizePolicy(sizePolicy)
         self.splitter.setOrientation(QtCore.Qt.Horizontal)
         self.splitter.setObjectName(_fromUtf8("splitter"))
-        self.widget = QtGui.QWidget(self.splitter)
-        self.widget.setObjectName(_fromUtf8("widget"))
-        self.verticalLayout_2 = QtGui.QVBoxLayout(self.widget)
+        self.layoutWidget = QtGui.QWidget(self.splitter)
+        self.layoutWidget.setObjectName(_fromUtf8("layoutWidget"))
+        self.verticalLayout_2 = QtGui.QVBoxLayout(self.layoutWidget)
         self.verticalLayout_2.setMargin(0)
         self.verticalLayout_2.setObjectName(_fromUtf8("verticalLayout_2"))
-        self.lstLibrary = QtGui.QTreeView(self.widget)
+        self.lstLibrary = LibraryView(self.layoutWidget)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(5)
@@ -45,7 +45,7 @@ class Ui_MainWindow(object):
         self.lstLibrary.setDragDropMode(QtGui.QAbstractItemView.DragOnly)
         self.lstLibrary.setObjectName(_fromUtf8("lstLibrary"))
         self.verticalLayout_2.addWidget(self.lstLibrary)
-        self.leLibraryFilter = QtGui.QLineEdit(self.widget)
+        self.leLibraryFilter = QtGui.QLineEdit(self.layoutWidget)
         self.leLibraryFilter.setObjectName(_fromUtf8("leLibraryFilter"))
         self.verticalLayout_2.addWidget(self.leLibraryFilter)
         self.lstPlaylist = QtGui.QTableView(self.splitter)
@@ -114,3 +114,4 @@ class Ui_MainWindow(object):
         self.pgbSongProgress.setFormat(QtGui.QApplication.translate("MainWindow", "Idle", None, QtGui.QApplication.UnicodeUTF8))
         self.pgbSongProgressPrev.setFormat(QtGui.QApplication.translate("MainWindow", "Idle", None, QtGui.QApplication.UnicodeUTF8))
 
+from libraryview import LibraryView
