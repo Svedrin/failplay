@@ -538,6 +538,7 @@ class Player(QtCore.QObject, threading.Thread):
 
 
 if __name__ == '__main__':
+    import os
     from optparse import OptionParser
 
     parser = OptionParser(usage="%prog [options] [<file> ...]\n")
@@ -550,15 +551,31 @@ if __name__ == '__main__':
     parser.add_option( "-q", "--enqueue",  help="Enqueue the tracks named on the command line.", action="store_true", default=False)
     options, posargs = parser.parse_args()
 
+    conf = ConfigParser()
+    conf.read(os.path.join(os.environ["HOME"], ".failplay", "failaudio.conf"))
+
+    if conf.has_section("environment"):
+        for key in conf.options("environment"):
+            os.environ[key.upper()] = conf.get("environment", key)
+
+    def getconf(value, default=None):
+        if getattr(options, value) is not None:
+            return getattr(options, value)
+        if conf.has_option("options", value):
+            return conf.get("options", value)
+        return default
+
 
     p = Playlist()
 
-    if options.playlist:
-        print "Loading playlist from", options.playlist
-        p.loadpls(options.playlist)
+    playlistfile = getconf("playlist")
+    if playlistfile:
+        print "Loading playlist from", playlistfile
+        p.loadpls(playlistfile)
 
+    enqueue = getconf("enqueue") in (True, "True")
     for filename in posargs:
-        if options.enqueue:
+        if enqueue:
             p.enqueue(filename)
         else:
             p.append(filename)
@@ -597,6 +614,7 @@ if __name__ == '__main__':
 
     app.exec_()
 
-    if options.writepls:
-        print "Saving playlist to", options.writepls
-        p.writepls(options.writepls)
+    playlistfile = getconf("writepls")
+    if playlistfile:
+        print "Saving playlist to", playlistfile
+        p.writepls(playlistfile)
