@@ -144,14 +144,6 @@ class Playlist(QtCore.QAbstractTableModel):
 
         return self
 
-    def prev(self):
-        """ Move to the previous song. """
-        if self.current == 0:
-            self.current = len(self.playlist) - 1
-        else:
-            self.current -= 1
-        return self.playlist[self.current]
-
     def next(self):
         """ Move to the next song. """
         if not self.playlist:
