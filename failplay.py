@@ -40,6 +40,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.setupUi(self)
 
+        self.connect( self.player, Player.sig_started, self.started )
         self.connect( self.player, Player.sig_stopped, self.close )
 
         self.connect( self.player, Player.sig_position_normal, self.status_update_normal )
@@ -53,6 +54,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.lstLibrary.hideColumn(2)
         self.lstLibrary.hideColumn(3)
 
+        self.connect( self.playlist,    Playlist.sig_datachg, self.updatePlaylist )
         self.connect( self.leLibraryFilter, QtCore.SIGNAL("textEdited(QString)"), self.updateFilter )
         self.connect( self.lstLibrary,  QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.append )
 
@@ -121,6 +123,9 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         """ Toggle stopAfter for the currently playing track. """
         self.playlist.toggleStopAfter( self.playlist[ self.playlist.current ] )
 
+    def updatePlaylist(self, topleft, btright):
+        self.lstPlaylist.reset()
+
     def updateFilter(self, text):
         if text:
             self.library.setNameFilters(["*" + text + "*"])
@@ -129,6 +134,9 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
     def start(self):
         self.player.start()
+
+    def started(self):
+        self.lstPlaylist.scrollTo( self.playlist.index( self.playlist.current ), QtGui.QAbstractItemView.PositionAtCenter )
 
     def append(self, index):
         self.playlist.append( self.library.filePath(index).toLocal8Bit().data() )
