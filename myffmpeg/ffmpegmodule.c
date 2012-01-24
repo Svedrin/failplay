@@ -113,7 +113,7 @@ static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 	}
 	
 	char* resultbuf = malloc(avfrm.linesize[0] + 1);
-	memcpy(resultbuf, avfrm.data, avfrm.linesize[0]);
+	memcpy(resultbuf, avfrm.extended_data[0], avfrm.linesize[0]);
 	resultbuf[avfrm.linesize[0]] = 0;
 	
 	return Py_BuildValue( "s#", resultbuf, avfrm.linesize[0] );
