@@ -65,16 +65,10 @@ static PyObject* ffmpeg_new( PyTypeObject* type, PyObject* args ){
 		return NULL;
 	}
 	
-	av_dump_format(self->pFormatCtx, 0, self->infile, 0);
-	
 	AVCodec *codec;
 	
 	int streamIdx = av_find_best_stream(self->pFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0);
 	self->pCodecCtx = self->pFormatCtx->streams[streamIdx]->codec;
-	
-	printf( "bitrate: %d\n", self->pCodecCtx->bit_rate );
-	printf( "smprate: %d\n", self->pCodecCtx->sample_rate );
-	printf( "channels: %d\n", self->pCodecCtx->channels );
 	
 	if( avcodec_open2(self->pCodecCtx, codec, NULL) < 0 ){
 		PyErr_SetString(PyExc_IndexError, "could not open infile");
@@ -89,6 +83,29 @@ static void ffmpeg_dealloc( ffmpegObject* self ){
 	av_free(self->pCodecCtx);
 // 	av_close_input_file(self->pFormatCtx);
 }
+
+static PyObject* ffmpeg_dump_format( ffmpegObject* self ){
+	av_dump_format(self->pFormatCtx, 0, self->infile, 0);
+	Py_RETURN_NONE;
+}
+
+static PyObject* ffmpeg_get_bitrate( ffmpegObject* self ){
+	return Py_BuildValue( "i", self->pCodecCtx->bit_rate );
+}
+
+static PyObject* ffmpeg_get_samplerate( ffmpegObject* self ){
+	return Py_BuildValue( "i", self->pCodecCtx->sample_rate );
+}
+
+static PyObject* ffmpeg_get_channels( ffmpegObject* self ){
+	return Py_BuildValue( "i", self->pCodecCtx->channels );
+}
+
+static PyObject* ffmpeg_get_path( ffmpegObject* self ){
+	return Py_BuildValue( "s", self->infile );
+}
+
+
 
 static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 	AVPacket avpkt;
@@ -120,7 +137,12 @@ static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 
 
 static PyMethodDef ffmpegObject_Methods[] = {
-	{"read",  (PyCFunction)ffmpeg_read, METH_NOARGS, "read some stuff."},
+	{ "read",           (PyCFunction)ffmpeg_read,           METH_NOARGS, "read()\nRead the next frame and return its data." },
+	{ "dump_format",    (PyCFunction)ffmpeg_dump_format,    METH_NOARGS, "dump_format()\nDump a bit of info about the file to stdout." },
+	{ "get_path",       (PyCFunction)ffmpeg_get_path,       METH_NOARGS, "get_path()\nReturn the path to the input file." },
+	{ "get_bitrate",    (PyCFunction)ffmpeg_get_bitrate,    METH_NOARGS, "get_bitrate()\nReturn the bit rate of the decoded file." },
+	{ "get_samplerate", (PyCFunction)ffmpeg_get_samplerate, METH_NOARGS, "get_samplerate()\nReturn the sample rate of the decoded file." },
+	{ "get_channels",   (PyCFunction)ffmpeg_get_channels,   METH_NOARGS, "get_channels()\nReturn the number of channels in the decoded file." },
 	{ NULL, NULL, 0, NULL }
 };
 
