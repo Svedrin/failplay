@@ -60,7 +60,7 @@ static PyObject* ffmpeg_new( PyTypeObject* type, PyObject* args ){
 		return NULL;
 	}
 	
-	if (av_find_stream_info(self->pFormatCtx) < 0) {
+	if (avformat_find_stream_info(self->pFormatCtx, NULL) < 0) {
 		PyErr_SetString(PyExc_IndexError, "could not find stream information");
 		return NULL;
 	}
@@ -76,7 +76,7 @@ static PyObject* ffmpeg_new( PyTypeObject* type, PyObject* args ){
 	printf( "smprate: %d\n", self->pCodecCtx->sample_rate );
 	printf( "channels: %d\n", self->pCodecCtx->channels );
 	
-	if( avcodec_open(self->pCodecCtx, codec) < 0 ){
+	if( avcodec_open2(self->pCodecCtx, codec, NULL) < 0 ){
 		PyErr_SetString(PyExc_IndexError, "could not open infile");
 		return NULL;
 	}
@@ -91,7 +91,6 @@ static void ffmpeg_dealloc( ffmpegObject* self ){
 }
 
 static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
-	int len;
 	AVPacket avpkt;
 	AVFrame avfrm;
 	int got_frame;
@@ -104,7 +103,7 @@ static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 	avcodec_get_frame_defaults(&avfrm);
 	
 	got_frame = 0;
-	len = avcodec_decode_audio4(self->pCodecCtx, &avfrm, &got_frame, &avpkt);
+	avcodec_decode_audio4(self->pCodecCtx, &avfrm, &got_frame, &avpkt);
 	av_free_packet(&avpkt);
 	
 	if (got_frame == 0) {
@@ -121,7 +120,7 @@ static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 
 
 static PyMethodDef ffmpegObject_Methods[] = {
-	{"read",  ffmpeg_read, METH_NOARGS, "read some stuff."},
+	{"read",  (PyCFunction)ffmpeg_read, METH_NOARGS, "read some stuff."},
 	{ NULL, NULL, 0, NULL }
 };
 
