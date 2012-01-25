@@ -109,6 +109,10 @@ static PyObject* ffmpeg_get_channels( ffmpegObject* self ){
 	return Py_BuildValue( "i", self->pCodecCtx->channels );
 }
 
+static PyObject* ffmpeg_get_codec( ffmpegObject* self ){
+	return Py_BuildValue( "s", self->pCodecCtx->codec->name );
+}
+
 static PyObject* ffmpeg_get_path( ffmpegObject* self ){
 	return Py_BuildValue( "s", self->infile );
 }
@@ -120,7 +124,7 @@ static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 	AVFrame avfrm;
 	int got_frame;
 	
-	if( av_read_frame(self->pFormatCtx, &avpkt) != 0 ){
+	if( av_read_frame(self->pFormatCtx, &avpkt) < 0 ){
 		PyErr_SetString(FfmpegFileError, "read failed");
 		return NULL;
 	}
@@ -154,6 +158,7 @@ static PyMethodDef ffmpegObject_Methods[] = {
 	{ "get_bitrate",    (PyCFunction)ffmpeg_get_bitrate,    METH_NOARGS, "get_bitrate()\nReturn the bit rate of the decoded file." },
 	{ "get_samplerate", (PyCFunction)ffmpeg_get_samplerate, METH_NOARGS, "get_samplerate()\nReturn the sample rate of the decoded file." },
 	{ "get_channels",   (PyCFunction)ffmpeg_get_channels,   METH_NOARGS, "get_channels()\nReturn the number of channels in the decoded file." },
+	{ "get_codec",      (PyCFunction)ffmpeg_get_codec,      METH_NOARGS, "get_codec()\nReturn the name of the codec being used." },
 	{ NULL, NULL, 0, NULL }
 };
 
