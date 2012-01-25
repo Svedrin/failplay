@@ -89,7 +89,7 @@ static PyObject* ffmpeg_new( PyTypeObject* type, PyObject* args ){
 static void ffmpeg_dealloc( ffmpegObject* self ){
 	avcodec_close(self->pCodecCtx);
 	av_free(self->pCodecCtx);
-// 	av_close_input_file(self->pFormatCtx);
+// 	avformat_close_input(&self->pFormatCtx);
 }
 
 static PyObject* ffmpeg_dump_format( ffmpegObject* self ){
@@ -121,6 +121,14 @@ static PyObject* ffmpeg_get_path( ffmpegObject* self ){
 	return Py_BuildValue( "s", self->infile );
 }
 
+static PyObject* ffmpeg_get_metadata( ffmpegObject* self ){
+	PyObject* metadict = PyDict_New();
+	AVDictionaryEntry *metaent = NULL;
+	while( (metaent = av_dict_get(self->pFormatCtx->metadata, "", metaent, AV_DICT_IGNORE_SUFFIX)) != NULL ){
+		PyDict_SetItemString(metadict, metaent->key, PyString_FromString(metaent->value));
+	}
+	return metadict;
+}
 
 
 static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
@@ -147,9 +155,8 @@ static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 		return NULL;
 	}
 	
-	char* resultbuf = malloc(avfrm.linesize[0] + 1);
+	char* resultbuf = malloc(avfrm.linesize[0]);
 	memcpy(resultbuf, avfrm.extended_data[0], avfrm.linesize[0]);
-	resultbuf[avfrm.linesize[0]] = 0;
 	
 	return Py_BuildValue( "s#", resultbuf, avfrm.linesize[0] );
 }
@@ -163,6 +170,7 @@ static PyMethodDef ffmpegObject_Methods[] = {
 	{ "get_samplerate", (PyCFunction)ffmpeg_get_samplerate, METH_NOARGS, "get_samplerate()\nReturn the sample rate of the decoded file." },
 	{ "get_channels",   (PyCFunction)ffmpeg_get_channels,   METH_NOARGS, "get_channels()\nReturn the number of channels in the decoded file." },
 	{ "get_duration",   (PyCFunction)ffmpeg_get_duration,   METH_NOARGS, "get_duration()\nReturn the duration of the decoded file in seconds." },
+	{ "get_metadata",   (PyCFunction)ffmpeg_get_metadata,   METH_NOARGS, "get_metadata()\nReturn a dict containing the file's meta data." },
 	{ "get_codec",      (PyCFunction)ffmpeg_get_codec,      METH_NOARGS, "get_codec()\nReturn the name of the codec being used." },
 	{ NULL, NULL, 0, NULL }
 };
