@@ -1,16 +1,12 @@
 /**
- *  Python Module to run Fuzzy Calculations using fis.c from MATLAB.
+ *  Python Module to decode audio files using FFmpeg's lavc.
  *
  *  Copyright © 2009/10, Michael "Svedrin" Ziegler <diese-addy@funzt-halt.net>
  *
  *  To compile this file into a Python module, run `python setup.py build`.
  *  The compiled binary will be put into build/lib.<platform>/fis.so.
  *
- *  This requires the fis.c file which is distributed in MATLAB. Since
- *  fis.c does not state copyright regulations, I don't distribute it with
- *  this file.
- *
- *  The FIS module is free software; you can redistribute it and/or modify
+ *  The FFMPEG module is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
@@ -28,9 +24,15 @@
 #include <libavformat/avformat.h>
 #include <libavutil/mathematics.h>
 
-#define INBUF_SIZE 4096
-#define AUDIO_INBUF_SIZE 20480
-#define AUDIO_REFILL_THRESH 4096
+#define MODULE_DOCSTRING "Python Module that decodes audio using FFmpeg's lavc."
+#define DECODER_DOCSTRING ""\
+	"This class handles decoding audio frames.\n"\
+	"\n"\
+	"Usage:\n"\
+	">>> decoder = ffmpeg.Decoder('/path/to/some/file.ogg')\n"\
+	">>> while True:\n"\
+	"...     pcm.play( decoder.read() )\n"\
+	""
 
 
 typedef struct {
@@ -43,7 +45,6 @@ typedef struct {
 
 
 static PyObject* ffmpeg_new( PyTypeObject* type, PyObject* args ){
-	printf( "C!!!...\n");
 	ffmpegObject* self;
 	
 	self = (ffmpegObject *) type->tp_alloc( type, 0 );
@@ -54,7 +55,6 @@ static PyObject* ffmpeg_new( PyTypeObject* type, PyObject* args ){
 	if( !PyArg_ParseTuple( args, "s", &self->infile ) )
 		return NULL;
 	
-	printf( "Opening...\n");
 	if(avformat_open_input(&self->pFormatCtx, self->infile, NULL, NULL) < 0){
 		PyErr_SetString(PyExc_IndexError, "could not open infile");
 		return NULL;
@@ -120,90 +120,13 @@ static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 }
 
 
-static PyObject* ffmpeg_hallo( ffmpegObject* self, PyObject* args ){
-	char* infile;
-	
-	if( !PyArg_ParseTuple( args, "s", &infile ) )
-		return NULL;
-	
-	if(avformat_open_input(&self->pFormatCtx, infile, NULL, NULL) < 0){
-		PyErr_SetString(PyExc_IndexError, "could not open infile");
-		return NULL;
-	}
-	
-	if (av_find_stream_info(self->pFormatCtx) < 0) {
-		PyErr_SetString(PyExc_IndexError, "could not find stream information");
-		return NULL;
-	}
-	
-	av_dump_format(self->pFormatCtx, 0, infile, 0);
-	
-	AVCodec *codec;
-	
-	int streamIdx = av_find_best_stream(self->pFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0);
-	self->pCodecCtx = self->pFormatCtx->streams[streamIdx]->codec;
-	
-	printf( "bitrate: %d\n", self->pCodecCtx->bit_rate );
-	printf( "smprate: %d\n", self->pCodecCtx->sample_rate );
-	printf( "channels: %d\n", self->pCodecCtx->channels );
-	
-	if( avcodec_open(self->pCodecCtx, codec) < 0 ){
-		PyErr_SetString(PyExc_IndexError, "could not open infile");
-		return NULL;
-	}
-	
-	int len;
-	AVPacket avpkt;
-	AVFrame avfrm;
-	int got_frame;
-	
-	
-	char* resultbuf = malloc(40960000);
-	int resultpos = 0;
-	
-	while( av_read_frame(self->pFormatCtx, &avpkt) == 0 && resultpos < 40960000 - AVCODEC_MAX_AUDIO_FRAME_SIZE ){
-// 		printf("Readn... \n" );
-		
-		avcodec_get_frame_defaults(&avfrm);
-		
-		got_frame = 0;
-		len = avcodec_decode_audio4(self->pCodecCtx, &avfrm, &got_frame, &avpkt);
-		av_free_packet(&avpkt);
-		
-// 		if (len < 0) {
-// 			printf( "Looks failish: %d %d\n", len, got_frame );
-// 			break;
-// 		}
-// 		else{
-// 			printf( "Looks good: %d %d %d %d\n", len, got_frame, avfrm.linesize[0], avfrm.nb_samples );
-// 		}
-		
-		if (got_frame > 0) {
-// 			printf( "save dat stuff: %d\n", resultpos);
-			memcpy(resultbuf + resultpos, avfrm.data, avfrm.linesize[0]);
-			resultpos += avfrm.linesize[0];
-		}
-	}
-	
-	
-	avcodec_close(self->pCodecCtx);
-	av_free(self->pCodecCtx);
-// 	av_close_input_file(self->pFormatCtx);
-	
-	return Py_BuildValue( "(si)",
-		resultbuf, resultpos
-		);
-}
-
-
-
 static PyMethodDef ffmpegObject_Methods[] = {
 	{"read",  ffmpeg_read, METH_NOARGS, "read some stuff."},
 	{ NULL, NULL, 0, NULL }
 };
 
 static PyMemberDef ffmpegObject_Members[] = {
-    { NULL }
+	{ NULL }
 };
 
 static PyTypeObject ffmpegType = {
@@ -228,7 +151,7 @@ static PyTypeObject ffmpegType = {
 	0,                         /*tp_setattro*/
 	0,                         /*tp_as_buffer*/
 	Py_TPFLAGS_DEFAULT,        /*tp_flags*/
-	"derpyherp",               /* tp_doc */
+	DECODER_DOCSTRING,         /* tp_doc */
 	0,                         /* tp_traverse */
 	0,                         /* tp_clear */
 	0,                         /* tp_richcompare */
@@ -252,7 +175,6 @@ static PyTypeObject ffmpegType = {
 
 
 static PyMethodDef ffmpegmodule_Methods[] = {
-	{"hallo",  ffmpeg_hallo, METH_VARARGS, "herpyderp."},
 	{ NULL, NULL, 0, NULL }
 };
 
@@ -270,7 +192,7 @@ PyMODINIT_FUNC initffmpeg(void){
 		return;
 	}
 	
-	module = Py_InitModule3( "ffmpeg", ffmpegmodule_Methods, "voll der docstring" );
+	module = Py_InitModule3( "ffmpeg", ffmpegmodule_Methods, MODULE_DOCSTRING );
 	
 	Py_INCREF( &ffmpegType );
 	PyModule_AddObject( module, "Decoder", (PyObject *)&ffmpegType );
