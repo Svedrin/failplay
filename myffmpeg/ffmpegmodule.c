@@ -35,6 +35,10 @@
 	""
 
 
+static PyObject *FfmpegDecodeError;
+static PyObject *FfmpegFileError;
+
+
 typedef struct {
 	PyObject_HEAD
 	const char *infile;
@@ -56,22 +60,26 @@ static PyObject* ffmpeg_new( PyTypeObject* type, PyObject* args ){
 		return NULL;
 	
 	if(avformat_open_input(&self->pFormatCtx, self->infile, NULL, NULL) < 0){
-		PyErr_SetString(PyExc_IndexError, "could not open infile");
+		PyErr_SetString(FfmpegFileError, "could not open infile");
 		return NULL;
 	}
 	
 	if (avformat_find_stream_info(self->pFormatCtx, NULL) < 0) {
-		PyErr_SetString(PyExc_IndexError, "could not find stream information");
+		PyErr_SetString(FfmpegDecodeError, "could not find stream information");
 		return NULL;
 	}
 	
 	AVCodec *codec;
 	
 	int streamIdx = av_find_best_stream(self->pFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0);
+	if( streamIdx < 0 ){
+		PyErr_SetString(FfmpegDecodeError, "could not find an audio stream");
+		return NULL;
+	}
 	self->pCodecCtx = self->pFormatCtx->streams[streamIdx]->codec;
 	
 	if( avcodec_open2(self->pCodecCtx, codec, NULL) < 0 ){
-		PyErr_SetString(PyExc_IndexError, "could not open infile");
+		PyErr_SetString(FfmpegDecodeError, "could not open codec");
 		return NULL;
 	}
 	
@@ -113,18 +121,21 @@ static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 	int got_frame;
 	
 	if( av_read_frame(self->pFormatCtx, &avpkt) != 0 ){
-		PyErr_SetString(PyExc_IndexError, "read failed");
+		PyErr_SetString(FfmpegFileError, "read failed");
 		return NULL;
 	}
-		
+	
 	avcodec_get_frame_defaults(&avfrm);
 	
 	got_frame = 0;
-	avcodec_decode_audio4(self->pCodecCtx, &avfrm, &got_frame, &avpkt);
+	if( avcodec_decode_audio4(self->pCodecCtx, &avfrm, &got_frame, &avpkt) < 0 ){
+		PyErr_SetString(FfmpegDecodeError, "decoding failed");
+		return NULL;
+	}
 	av_free_packet(&avpkt);
 	
 	if (got_frame == 0) {
-		PyErr_SetString(PyExc_IndexError, "no frame today, the music's gone away, my packet stands forlorn, a symbol of the dawn");
+		PyErr_SetString(PyExc_StopIteration, "no frame today, the music's gone away, my packet stands forlorn, a symbol of the dawn");
 		return NULL;
 	}
 	
@@ -217,6 +228,14 @@ PyMODINIT_FUNC initffmpeg(void){
 	
 	Py_INCREF( &ffmpegType );
 	PyModule_AddObject( module, "Decoder", (PyObject *)&ffmpegType );
+	
+	FfmpegDecodeError = PyErr_NewException("ffmpeg.DecodeError", NULL, NULL);
+	Py_INCREF(FfmpegDecodeError);
+	PyModule_AddObject( module, "DecodeError", FfmpegDecodeError );
+	
+	FfmpegFileError = PyErr_NewException("ffmpeg.FileError", NULL, NULL);
+	Py_INCREF(FfmpegFileError);
+	PyModule_AddObject( module, "FileError", FfmpegFileError );
 	
 	avcodec_register_all();
 	av_register_all();
