@@ -113,6 +113,10 @@ static PyObject* ffmpeg_get_codec( ffmpegObject* self ){
 	return Py_BuildValue( "s", self->pCodecCtx->codec->name );
 }
 
+static PyObject* ffmpeg_get_duration( ffmpegObject* self ){
+	return Py_BuildValue( "d", self->pFormatCtx->duration / (double)AV_TIME_BASE );
+}
+
 static PyObject* ffmpeg_get_path( ffmpegObject* self ){
 	return Py_BuildValue( "s", self->infile );
 }
@@ -158,6 +162,7 @@ static PyMethodDef ffmpegObject_Methods[] = {
 	{ "get_bitrate",    (PyCFunction)ffmpeg_get_bitrate,    METH_NOARGS, "get_bitrate()\nReturn the bit rate of the decoded file." },
 	{ "get_samplerate", (PyCFunction)ffmpeg_get_samplerate, METH_NOARGS, "get_samplerate()\nReturn the sample rate of the decoded file." },
 	{ "get_channels",   (PyCFunction)ffmpeg_get_channels,   METH_NOARGS, "get_channels()\nReturn the number of channels in the decoded file." },
+	{ "get_duration",   (PyCFunction)ffmpeg_get_duration,   METH_NOARGS, "get_duration()\nReturn the duration of the decoded file in seconds." },
 	{ "get_codec",      (PyCFunction)ffmpeg_get_codec,      METH_NOARGS, "get_codec()\nReturn the name of the codec being used." },
 	{ NULL, NULL, 0, NULL }
 };
