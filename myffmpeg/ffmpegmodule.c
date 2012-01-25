@@ -44,6 +44,7 @@ typedef struct {
 	const char *infile;
 	AVFormatContext *pFormatCtx;
 	AVCodecContext *pCodecCtx;
+	AVStream *pStream;
 } ffmpegObject;
 
 
@@ -76,6 +77,7 @@ static PyObject* ffmpeg_new( PyTypeObject* type, PyObject* args ){
 		PyErr_SetString(FfmpegDecodeError, "could not find an audio stream");
 		return NULL;
 	}
+	self->pStream = self->pFormatCtx->streams[streamIdx];
 	self->pCodecCtx = self->pFormatCtx->streams[streamIdx]->codec;
 	
 	if( avcodec_open2(self->pCodecCtx, codec, NULL) < 0 ){
@@ -125,6 +127,10 @@ static PyObject* ffmpeg_get_metadata( ffmpegObject* self ){
 	PyObject* metadict = PyDict_New();
 	AVDictionaryEntry *metaent = NULL;
 	while( (metaent = av_dict_get(self->pFormatCtx->metadata, "", metaent, AV_DICT_IGNORE_SUFFIX)) != NULL ){
+		PyDict_SetItemString(metadict, metaent->key, PyString_FromString(metaent->value));
+	}
+	metaent = NULL;
+	while( (metaent = av_dict_get(self->pStream->metadata, "", metaent, AV_DICT_IGNORE_SUFFIX)) != NULL ){
 		PyDict_SetItemString(metadict, metaent->key, PyString_FromString(metaent->value));
 	}
 	return metadict;
