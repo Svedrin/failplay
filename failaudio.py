@@ -147,6 +147,11 @@ class Playlist(QtCore.QAbstractTableModel):
 
     def next(self):
         """ Move to the next song. """
+        if self.current is not None:
+            prevpath = self.playlist[self.current]
+        else:
+            prevpath = None
+
         if not self.playlist:
             raise StopIteration("No songs in playlist")
         if self.stopafter is not None and self.current == self.stopafter:
@@ -164,7 +169,12 @@ class Playlist(QtCore.QAbstractTableModel):
             self.current = 0
         else:
             self.current += 1
-        return self.playlist[self.current]
+
+        nextpath = self.playlist[self.current]
+        if prevpath is not None and prevpath != nextpath: # don't emit twice on repeat
+            self._emit_changed(prevpath)
+        self._emit_changed(nextpath)
+        return nextpath
 
     @property
     def dirty(self):
