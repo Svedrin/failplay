@@ -139,32 +139,38 @@ static PyObject* ffmpeg_get_metadata( ffmpegObject* self ){
 
 static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 	AVPacket avpkt;
-	AVFrame avfrm;
+	AVFrame *avfrm;
 	int got_frame;
 	
 	if( av_read_frame(self->pFormatCtx, &avpkt) < 0 ){
-		PyErr_SetString(FfmpegFileError, "read failed");
+		PyErr_SetString(PyExc_StopIteration, "no more frames to read");
 		return NULL;
 	}
 	
-	avcodec_get_frame_defaults(&avfrm);
 	
 	got_frame = 0;
-	if( avcodec_decode_audio4(self->pCodecCtx, &avfrm, &got_frame, &avpkt) < 0 ){
+	avfrm = avcodec_alloc_frame();
+	avcodec_get_frame_defaults(avfrm);
+	if( avcodec_decode_audio4(self->pCodecCtx, avfrm, &got_frame, &avpkt) < 0 ){
 		PyErr_SetString(FfmpegDecodeError, "decoding failed");
 		return NULL;
 	}
 	av_free_packet(&avpkt);
 	
 	if (got_frame == 0) {
-		PyErr_SetString(PyExc_StopIteration, "no frame today, the music's gone away, my packet stands forlorn, a symbol of the dawn");
-		return NULL;
+		return Py_BuildValue( "s", "" );
 	}
 	
-	char* resultbuf = malloc(avfrm.linesize[0]);
-	memcpy(resultbuf, avfrm.extended_data[0], avfrm.linesize[0]);
+	int data_size = av_samples_get_buffer_size(
+		NULL, self->pCodecCtx->channels, avfrm->nb_samples, self->pCodecCtx->sample_fmt, 1
+	);
 	
-	return Py_BuildValue( "s#", resultbuf, avfrm.linesize[0] );
+	char* resultbuf = malloc(data_size);
+	memcpy(resultbuf, avfrm->data[0], data_size);
+	
+	av_free(avfrm);
+	
+	return Py_BuildValue( "s#", resultbuf, data_size );
 }
 
 
