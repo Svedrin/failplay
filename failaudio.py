@@ -487,6 +487,10 @@ class Player(QtCore.QObject, threading.Thread):
                 self.emit(Player.sig_stopped, "source ran out of data.")
                 self.source.stop()
                 break
+            except Exception, err:
+                self.emit(Player.sig_stopped, "Error: " + err.message)
+                self.source.stop()
+                break
 
             if prev is None:
                 self.pcm.play( srcdata )
@@ -516,6 +520,11 @@ class Player(QtCore.QObject, threading.Thread):
                     prev = None
                     self.pcm.play( srcdata )
                     self.emit(Player.sig_position_normal, self.source)
+                except:
+                    # some other error happened, just play the other stream in its correct volume
+                    fac = max( (prev.duration - prev.pos), 0 ) / transtime
+                    self.emit(Player.sig_position_trans, prev, self.source, fac)
+                    self.pcm.play( audioop.mul( srcdata, 2, 1 - fac ) )
                 else:
                     fac = max( (prev.duration - prev.pos), 0 ) / transtime
                     self.emit(Player.sig_position_trans, prev, self.source, fac)
