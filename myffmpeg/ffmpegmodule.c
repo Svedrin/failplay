@@ -247,14 +247,14 @@ static PyMethodDef ffmpegmodule_Methods[] = {
 #ifndef PyMODINIT_FUNC	/* declarations for DLL import/export */
 #define PyMODINIT_FUNC void
 #endif
-PyMODINIT_FUNC initffmpeg(void){
+PyMODINIT_FUNC init_ffmpeg(void){
 	PyObject* module;
 	
 	if( PyType_Ready( &ffmpegType ) < 0 ){
 		return;
 	}
 	
-	module = Py_InitModule3( "ffmpeg", ffmpegmodule_Methods, MODULE_DOCSTRING );
+	module = Py_InitModule3( "_ffmpeg", ffmpegmodule_Methods, MODULE_DOCSTRING );
 	
 	Py_INCREF( &ffmpegType );
 	PyModule_AddObject( module, "Decoder", (PyObject *)&ffmpegType );

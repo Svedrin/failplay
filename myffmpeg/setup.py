@@ -31,7 +31,7 @@
 from distutils.core import setup, Extension
 
 fismodule = Extension(
-	'ffmpeg',
+	'_ffmpeg',
 	sources   = ['ffmpegmodule.c'],
 	libraries = ["avcodec", "avformat"]
 	)
