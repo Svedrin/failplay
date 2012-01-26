@@ -3,6 +3,8 @@
 # kate: space-indent on; indent-width 4; replace-tabs on;
 
 from time import time
+from os.path import exists
+from shutil import copyfile
 
 from PyQt4 import Qt
 from PyQt4 import QtCore
@@ -119,6 +121,8 @@ class Playlist(QtCore.QAbstractTableModel):
 
     def writepls(self, fpath):
         """ Write the current playlist to a file in .pls format. """
+        if exists( fpath ):
+            copyfile( fpath, fpath+'~' )
         fd = open(fpath, "wb")
         try:
             fd.write("[playlist]\n")
