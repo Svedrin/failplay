@@ -101,7 +101,7 @@ class Playlist(QtCore.QAbstractTableModel):
                 if value == "None":
                     value = None
                 else:
-                    value = int(value)
+                    value = int(value) - 1
                 return value
 
             self.stopafter = intOrNone("stopafter")
@@ -133,9 +133,9 @@ class Playlist(QtCore.QAbstractTableModel):
             fd.write( "\n" )
 
             fd.write("[failplay]\n")
-            fd.write("StopAfter=%s\n" % self.stopafter)
-            fd.write("Repeat=%s\n"    % self.repeat)
-            fd.write("Current=%s\n"   % self.current)
+            fd.write("StopAfter=%s\n" % (self.stopafter + 1))
+            fd.write("Repeat=%s\n"    % (self.repeat + 1))
+            fd.write("Current=%s\n"   % (self.current + 1))
             fd.write("Queue=%s\n"     % ' '.join([ str(self.playlist.index(path) + 1) for path in self.jmpqueue ]))
 
             self.playlist_dirty = False
