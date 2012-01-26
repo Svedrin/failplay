@@ -27,7 +27,7 @@ class Decoder(object):
                 except StopIteration:
                     if self._buffer:
                         yield self._buffer
-                    raise
+                    raise StopIteration
 
             ret = self._buffer[:bytes]
             self._buffer = self._buffer[bytes:]
