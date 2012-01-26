@@ -33,7 +33,7 @@ class Source(QtCore.QObject):
         self.emit( Source.sig_start, self.path )
 
     def stop(self):
-        self.fd.close()
+        pass
 
     @property
     def duration(self):
