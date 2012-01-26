@@ -9,7 +9,7 @@ from PyQt4 import QtCore
 
 import audioop
 import ao
-import audioread
+from myffmpeg.ffmpeg import Decoder
 import threading
 
 from ConfigParser import ConfigParser
@@ -22,9 +22,10 @@ class Source(QtCore.QObject):
         QtCore.QObject.__init__(self)
         self.starttime = None
         self.path  = path
-        self.fd    = audioread.audio_open(path)
+        self.fd    = Decoder(path)
         self.gen   = None
         self.title = path.rsplit( '/', 1 )[1].rsplit('.', 1)[0]
+        self.fd.dump_format()
 
 
     def start(self):
@@ -45,7 +46,7 @@ class Source(QtCore.QObject):
     @property
     def data(self):
         if self.gen is None:
-            self.gen = self.fd.read_data()
+            self.gen = self.fd.read()
         return self.gen
 
 
