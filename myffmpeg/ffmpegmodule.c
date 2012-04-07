@@ -22,7 +22,6 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libavutil/mathematics.h>
 
 #define MODULE_DOCSTRING "Python Module that decodes audio using FFmpeg's lavc."
 #define DECODER_DOCSTRING ""\
