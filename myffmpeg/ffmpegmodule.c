@@ -127,11 +127,15 @@ static PyObject* ffmpeg_get_metadata( ffmpegObject* self ){
 	PyObject* metadict = PyDict_New();
 	AVDictionaryEntry *metaent = NULL;
 	while( (metaent = av_dict_get(self->pFormatCtx->metadata, "", metaent, AV_DICT_IGNORE_SUFFIX)) != NULL ){
-		PyDict_SetItemString(metadict, metaent->key, PyString_FromString(metaent->value));
+		PyObject* str = PyString_FromString(metaent->value);
+		PyDict_SetItemString(metadict, metaent->key, str);
+		Py_DECREF(str);
 	}
 	metaent = NULL;
 	while( (metaent = av_dict_get(self->pStream->metadata, "", metaent, AV_DICT_IGNORE_SUFFIX)) != NULL ){
-		PyDict_SetItemString(metadict, metaent->key, PyString_FromString(metaent->value));
+		PyObject* str = PyString_FromString(metaent->value);
+		PyDict_SetItemString(metadict, metaent->key, str);
+		Py_DECREF(str);
 	}
 	return metadict;
 }
