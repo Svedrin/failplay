@@ -28,9 +28,11 @@
 	"This class handles decoding audio frames.\n"\
 	"\n"\
 	"Usage:\n"\
+	">>> import ao\n" \
+	">>> pcm = ao.AudioDevice()\n" \
 	">>> decoder = ffmpeg.Decoder('/path/to/some/file.ogg')\n"\
-	">>> while True:\n"\
-	"...     pcm.play( decoder.read() )\n"\
+	">>> for chunk in decoder.read():\n"\
+	"...     pcm.play( chunk )\n"\
 	""
 
 
