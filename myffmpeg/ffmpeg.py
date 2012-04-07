@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 # kate: space-indent on; indent-width 4; replace-tabs on;
 
-from _ffmpeg import Decoder as LowLevelDecoder
+from _ffmpeg import Decoder as LowLevelDecoder, DecodeError
 
 class Decoder(object):
-    def __init__(self, fpath):
+    def __init__(self, fpath, errignore=True):
         self._decoder = LowLevelDecoder(fpath)
         self._buffer  = ""
+        self.errignore = errignore
 
     channels   = property( lambda self: self._decoder.get_channels() )
     bitrate    = property( lambda self: self._decoder.get_bitrate() )
@@ -27,6 +28,9 @@ class Decoder(object):
                     if self._buffer:
                         yield self._buffer
                     raise StopIteration
+                except DecodeError, err:
+                    if not self.errignore:
+                        raise err
 
             ret = self._buffer[:bytes]
             self._buffer = self._buffer[bytes:]
