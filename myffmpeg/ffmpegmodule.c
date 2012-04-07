@@ -177,7 +177,9 @@ static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 	
 	av_free(avfrm);
 	
-	return Py_BuildValue( "s#", resultbuf, data_size );
+	PyObject* ret = Py_BuildValue( "s#", resultbuf, data_size );
+	free(resultbuf);
+	return ret;
 }
 
 
