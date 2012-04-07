@@ -22,16 +22,13 @@ class Source(QtCore.QObject):
 
     def __init__(self, path):
         QtCore.QObject.__init__(self)
-        self.starttime = None
         self.path  = path
         self.fd    = Decoder(path)
         self.gen   = None
         self.title = path.rsplit( '/', 1 )[1].rsplit('.', 1)[0]
         self.fd.dump_format()
 
-
     def start(self):
-        self.starttime = time()
         self.emit( Source.sig_start, self.path )
 
     def stop(self):
