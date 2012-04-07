@@ -157,11 +157,14 @@ static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 	avcodec_get_frame_defaults(avfrm);
 	if( avcodec_decode_audio4(self->pCodecCtx, avfrm, &got_frame, &avpkt) < 0 ){
 		PyErr_SetString(FfmpegDecodeError, "decoding failed");
+		av_free_packet(&avpkt);
+		av_free(avfrm);
 		return NULL;
 	}
 	av_free_packet(&avpkt);
 	
 	if (got_frame == 0) {
+		av_free(avfrm);
 		return Py_BuildValue( "s", "" );
 	}
 	
