@@ -172,13 +172,8 @@ static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 		NULL, self->pCodecCtx->channels, avfrm->nb_samples, self->pCodecCtx->sample_fmt, 1
 	);
 	
-	char* resultbuf = malloc(data_size);
-	memcpy(resultbuf, avfrm->data[0], data_size);
-	
+	PyObject* ret = Py_BuildValue( "s#", avfrm->data[0], data_size );
 	av_free(avfrm);
-	
-	PyObject* ret = Py_BuildValue( "s#", resultbuf, data_size );
-	free(resultbuf);
 	return ret;
 }
 
