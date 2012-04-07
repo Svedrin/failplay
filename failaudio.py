@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 # kate: space-indent on; indent-width 4; replace-tabs on;
 
-from time import time
 from os.path import exists
 from shutil import copyfile
 
