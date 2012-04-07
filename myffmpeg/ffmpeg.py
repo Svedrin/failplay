@@ -5,6 +5,25 @@
 from _ffmpeg import Decoder as LowLevelDecoder, DecodeError
 
 class Decoder(object):
+    """ Python wrapper around the low level C module decoder.
+
+            Decoder(fpath, errignore=True)
+
+        It is used the same way as the C module:
+        >>> import ao
+        >>> pcm = ao.AudioDevice()
+        >>> decoder = ffmpeg.Decoder('/path/to/some/file.ogg')
+        >>> for chunk in decoder.read():
+        ...     pcm.play( chunk )
+
+        In contrast to the low level Decoder, this class's read() method makes
+        sure to always return the requested number of bytes (except at EOF),
+        even if that requires multiple low level read() calls. Furthermore,
+        DecodeErrors are ignored by default because some broken files cause them
+        unnecessarily. This can be disabled by setting errignore=False, in which
+        case all DecodeErrors will be raised.
+    """
+
     def __init__(self, fpath, errignore=True):
         self._decoder = LowLevelDecoder(fpath)
         self._buffer  = ""
@@ -37,4 +56,5 @@ class Decoder(object):
             yield ret
 
     def dump_format(self):
+        """ Dump input file format information to stdout. """
         self._decoder.dump_format()
