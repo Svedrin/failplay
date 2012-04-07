@@ -90,8 +90,7 @@ static PyObject* ffmpeg_new( PyTypeObject* type, PyObject* args ){
 
 static void ffmpeg_dealloc( ffmpegObject* self ){
 	avcodec_close(self->pCodecCtx);
-	av_free(self->pCodecCtx);
-// 	avformat_close_input(&self->pFormatCtx);
+	avformat_close_input(&self->pFormatCtx);
 }
 
 static PyObject* ffmpeg_dump_format( ffmpegObject* self ){
