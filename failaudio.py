@@ -43,7 +43,7 @@ class Source(QtCore.QObject):
 
     @property
     def pos(self):
-        return time() - self.starttime
+        return self.fd.position
 
     @property
     def data(self):

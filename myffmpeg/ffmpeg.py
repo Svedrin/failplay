@@ -22,12 +22,17 @@ class Decoder(object):
         DecodeErrors are ignored by default because some broken files cause them
         unnecessarily. This can be disabled by setting errignore=False, in which
         case all DecodeErrors will be raised.
+
+        In addition to the properties that retrive information from the Decoder,
+        the `position' property calculates the player's position in the file from
+        the amount of bytes already retrieved using the read() method.
     """
 
     def __init__(self, fpath, errignore=True):
         self._decoder = LowLevelDecoder(fpath)
         self._buffer  = ""
-        self.errignore = errignore
+        self._errignore = errignore
+        self._readbytes = 0
 
     channels   = property( lambda self: self._decoder.get_channels() )
     bitrate    = property( lambda self: self._decoder.get_bitrate() )
@@ -36,6 +41,11 @@ class Decoder(object):
     metadata   = property( lambda self: self._decoder.get_metadata() )
     codec      = property( lambda self: self._decoder.get_codec() )
     samplerate = property( lambda self: self._decoder.get_samplerate() )
+
+    @property
+    def position(self):
+        """ The player's position in the file in seconds. """
+        return self._readbytes / float(self.samplerate * self.channels * 16 / 8)
 
     def read(self, bytes=4096):
         """ Get chunks of exactly ``bytes`` length. """
@@ -48,11 +58,12 @@ class Decoder(object):
                         yield self._buffer
                     raise StopIteration
                 except DecodeError, err:
-                    if not self.errignore:
+                    if not self._errignore:
                         raise err
 
             ret = self._buffer[:bytes]
             self._buffer = self._buffer[bytes:]
+            self._readbytes += bytes
             yield ret
 
     def dump_format(self):
