@@ -34,13 +34,13 @@ class Decoder(object):
         self._errignore = errignore
         self._readbytes = 0
 
-    channels   = property( lambda self: self._decoder.get_channels() )
-    bitrate    = property( lambda self: self._decoder.get_bitrate() )
-    duration   = property( lambda self: self._decoder.get_duration() )
-    path       = property( lambda self: self._decoder.get_path() )
-    metadata   = property( lambda self: self._decoder.get_metadata() )
-    codec      = property( lambda self: self._decoder.get_codec() )
-    samplerate = property( lambda self: self._decoder.get_samplerate() )
+    channels   = property( lambda self: self._decoder.get_channels(),   doc="The number of channels in the input stream." )
+    bitrate    = property( lambda self: self._decoder.get_bitrate(),    doc="The bitrate of the input channels." )
+    duration   = property( lambda self: self._decoder.get_duration(),   doc="The length of the input stream in seconds." )
+    path       = property( lambda self: self._decoder.get_path(),       doc="The input file path." )
+    metadata   = property( lambda self: self._decoder.get_metadata(),   doc="Metadata from the input file's tags." )
+    codec      = property( lambda self: self._decoder.get_codec(),      doc="The name of the codec used for the stream.")
+    samplerate = property( lambda self: self._decoder.get_samplerate(), doc="The sample rate of the input stream." )
 
     @property
     def position(self):
