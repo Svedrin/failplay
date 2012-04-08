@@ -50,7 +50,7 @@ typedef struct {
 
 
 
-static PyObject* ffmpeg_new( PyTypeObject* type, PyObject* args ){
+static PyObject* ffmpeg_decoder_new( PyTypeObject* type, PyObject* args ){
 	ffmpegObject* self;
 	
 	self = (ffmpegObject *) type->tp_alloc( type, 0 );
@@ -89,41 +89,41 @@ static PyObject* ffmpeg_new( PyTypeObject* type, PyObject* args ){
 	return (PyObject *)self;
 }
 
-static void ffmpeg_dealloc( ffmpegObject* self ){
+static void ffmpeg_decoder_dealloc( ffmpegObject* self ){
 	avcodec_close(self->pCodecCtx);
 	avformat_close_input(&self->pFormatCtx);
 }
 
-static PyObject* ffmpeg_dump_format( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_dump_format( ffmpegObject* self ){
 	av_dump_format(self->pFormatCtx, 0, self->infile, 0);
 	Py_RETURN_NONE;
 }
 
-static PyObject* ffmpeg_get_bitrate( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_bitrate( ffmpegObject* self ){
 	return Py_BuildValue( "i", self->pCodecCtx->bit_rate );
 }
 
-static PyObject* ffmpeg_get_samplerate( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_samplerate( ffmpegObject* self ){
 	return Py_BuildValue( "i", self->pCodecCtx->sample_rate );
 }
 
-static PyObject* ffmpeg_get_channels( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_channels( ffmpegObject* self ){
 	return Py_BuildValue( "i", self->pCodecCtx->channels );
 }
 
-static PyObject* ffmpeg_get_codec( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_codec( ffmpegObject* self ){
 	return Py_BuildValue( "s", self->pCodecCtx->codec->name );
 }
 
-static PyObject* ffmpeg_get_duration( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_duration( ffmpegObject* self ){
 	return Py_BuildValue( "d", self->pFormatCtx->duration / (double)AV_TIME_BASE );
 }
 
-static PyObject* ffmpeg_get_path( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_path( ffmpegObject* self ){
 	return Py_BuildValue( "s", self->infile );
 }
 
-static PyObject* ffmpeg_get_metadata( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_metadata( ffmpegObject* self ){
 	PyObject* metadict = PyDict_New();
 	AVDictionaryEntry *metaent = NULL;
 	while( (metaent = av_dict_get(self->pFormatCtx->metadata, "", metaent, AV_DICT_IGNORE_SUFFIX)) != NULL ){
@@ -141,7 +141,7 @@ static PyObject* ffmpeg_get_metadata( ffmpegObject* self ){
 }
 
 
-static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
+static PyObject* ffmpeg_decoder_read( ffmpegObject* self, PyObject* args ){
 	AVPacket avpkt;
 	AVFrame *avfrm;
 	int got_frame;
@@ -179,15 +179,15 @@ static PyObject* ffmpeg_read( ffmpegObject* self, PyObject* args ){
 
 
 static PyMethodDef ffmpegObject_Methods[] = {
-	{ "read",           (PyCFunction)ffmpeg_read,           METH_NOARGS, "read()\nRead the next frame and return its data." },
-	{ "dump_format",    (PyCFunction)ffmpeg_dump_format,    METH_NOARGS, "dump_format()\nDump a bit of info about the file to stdout." },
-	{ "get_path",       (PyCFunction)ffmpeg_get_path,       METH_NOARGS, "get_path()\nReturn the path to the input file." },
-	{ "get_bitrate",    (PyCFunction)ffmpeg_get_bitrate,    METH_NOARGS, "get_bitrate()\nReturn the bit rate of the decoded file." },
-	{ "get_samplerate", (PyCFunction)ffmpeg_get_samplerate, METH_NOARGS, "get_samplerate()\nReturn the sample rate of the decoded file." },
-	{ "get_channels",   (PyCFunction)ffmpeg_get_channels,   METH_NOARGS, "get_channels()\nReturn the number of channels in the decoded file." },
-	{ "get_duration",   (PyCFunction)ffmpeg_get_duration,   METH_NOARGS, "get_duration()\nReturn the duration of the decoded file in seconds." },
-	{ "get_metadata",   (PyCFunction)ffmpeg_get_metadata,   METH_NOARGS, "get_metadata()\nReturn a dict containing the file's meta data." },
-	{ "get_codec",      (PyCFunction)ffmpeg_get_codec,      METH_NOARGS, "get_codec()\nReturn the name of the codec being used." },
+	{ "read",           (PyCFunction)ffmpeg_decoder_read,           METH_NOARGS, "read()\nRead the next frame and return its data." },
+	{ "dump_format",    (PyCFunction)ffmpeg_decoder_dump_format,    METH_NOARGS, "dump_format()\nDump a bit of info about the file to stdout." },
+	{ "get_path",       (PyCFunction)ffmpeg_decoder_get_path,       METH_NOARGS, "get_path()\nReturn the path to the input file." },
+	{ "get_bitrate",    (PyCFunction)ffmpeg_decoder_get_bitrate,    METH_NOARGS, "get_bitrate()\nReturn the bit rate of the decoded file." },
+	{ "get_samplerate", (PyCFunction)ffmpeg_decoder_get_samplerate, METH_NOARGS, "get_samplerate()\nReturn the sample rate of the decoded file." },
+	{ "get_channels",   (PyCFunction)ffmpeg_decoder_get_channels,   METH_NOARGS, "get_channels()\nReturn the number of channels in the decoded file." },
+	{ "get_duration",   (PyCFunction)ffmpeg_decoder_get_duration,   METH_NOARGS, "get_duration()\nReturn the duration of the decoded file in seconds." },
+	{ "get_metadata",   (PyCFunction)ffmpeg_decoder_get_metadata,   METH_NOARGS, "get_metadata()\nReturn a dict containing the file's meta data." },
+	{ "get_codec",      (PyCFunction)ffmpeg_decoder_get_codec,      METH_NOARGS, "get_codec()\nReturn the name of the codec being used." },
 	{ NULL, NULL, 0, NULL }
 };
 
@@ -201,7 +201,7 @@ static PyTypeObject ffmpegType = {
 	"ffmpeg.Decoder",          /*tp_name*/
 	sizeof( ffmpegObject ),    /*tp_basicsize*/
 	0,                         /*tp_itemsize*/
-	(destructor)ffmpeg_dealloc,/*tp_dealloc*/
+	(destructor)ffmpeg_decoder_dealloc,/*tp_dealloc*/
 	0,                         /*tp_print*/
 	0,                         /*tp_getattr*/
 	0,                         /*tp_setattr*/
@@ -234,7 +234,7 @@ static PyTypeObject ffmpegType = {
 	0,                         /* tp_dictoffset */
 	0,                         /* tp_init */
 	0,                         /* tp_alloc */
-	(newfunc)ffmpeg_new,       /* tp_new */
+	(newfunc)ffmpeg_decoder_new,       /* tp_new */
 };
 
 
