@@ -255,24 +255,20 @@ static PyTypeObject ffmpegDecoder = {
 typedef struct {
 	PyObject_HEAD
 	ReSampleContext *pResampleCtx;
+	int output_rate;
+	int input_rate;
+	int output_channels;
+	int input_channels;
+	enum AVSampleFormat output_sample_format;
+	enum AVSampleFormat input_sample_format;
+	int filter_length;
+	int log2_phase_count;
+	int linear;
+	double cutoff;
 } ffmpegResamplerObject;
 
 static PyObject* ffmpeg_resampler_new( PyTypeObject* type, PyObject* args, PyObject* kw ){
 	ffmpegResamplerObject* self;
-	
-	int output_rate = 0;
-	int input_rate  = 0;
-	int output_channels = 2;
-	int input_channels  = 2;
-	enum AVSampleFormat output_sample_format = AV_SAMPLE_FMT_S16;
-	enum AVSampleFormat input_sample_format  = AV_SAMPLE_FMT_S16;
-	/* The following defaults are blindly copied from
-	 * http://stackoverflow.com/questions/5501357/the-problem-with-ffmpeg-on-android
-	 */
-	int filter_length = 16;
-	int log2_phase_count = 10;
-	int linear = 0;
-	double cutoff = 1;
 	
 	static char *kwlist[] = {
 		"output_rate", "input_rate", "output_channels", "input_channels",
@@ -285,19 +281,33 @@ static PyObject* ffmpeg_resampler_new( PyTypeObject* type, PyObject* args, PyObj
 	if( self == NULL )
 		return NULL;
 	
+	self->output_rate = 0;
+	self->input_rate  = 0;
+	self->output_channels = 2;
+	self->input_channels  = 2;
+	self->output_sample_format = AV_SAMPLE_FMT_S16;
+	self->input_sample_format  = AV_SAMPLE_FMT_S16;
+	/* The following defaults are blindly copied from
+	 * http://stackoverflow.com/questions/5501357/the-problem-with-ffmpeg-on-android
+	 */
+	self->filter_length = 16;
+	self->log2_phase_count = 10;
+	self->linear = 0;
+	self->cutoff = 1;
+	
 	if( !PyArg_ParseTupleAndKeywords( args, kw, "ii|iiiiiiid", kwlist,
-		output_rate, input_rate, output_channels, input_channels,
-		output_sample_format, input_sample_format,
-		filter_length, log2_phase_count, linear, cutoff
+		&self->output_rate, &self->input_rate, &self->output_channels, &self->input_channels,
+		&self->output_sample_format, &self->input_sample_format,
+		&self->filter_length, &self->log2_phase_count, &self->linear, &self->cutoff
 		) ){
 		return NULL;
 	}
 	
 	self->pResampleCtx = av_audio_resample_init(
-		output_channels, input_channels,
-		output_rate, input_rate,
-		output_sample_format, input_sample_format,
-		filter_length, log2_phase_count, linear, cutoff);
+		self->output_channels, self->input_channels,
+		self->output_rate, self->input_rate,
+		self->output_sample_format, self->input_sample_format,
+		self->filter_length, self->log2_phase_count, self->linear, self->cutoff);
 	
 	if( self->pResampleCtx == NULL ){
 		PyErr_SetString(FfmpegResampleError, "could not initialize resampler");
@@ -312,8 +322,23 @@ static void ffmpeg_resampler_dealloc( ffmpegResamplerObject* self ){
 }
 
 static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObject* args ){
-	/* int audio_resample(ReSampleContext *s, short *output, short *input, int nb_samples); */
-	return Py_BuildValue("i", 1);
+	const char* inbuf;
+	int inlen;
+	unsigned char outbuf[AVCODEC_MAX_AUDIO_FRAME_SIZE];
+	int outlen;
+	
+	if( !PyArg_ParseTuple( args, "s#", &inbuf, &inlen ) )
+		return NULL;
+	
+	outlen = audio_resample(self->pResampleCtx, (short *)outbuf, (short *)inbuf,
+		inlen / self->input_channels * av_get_bytes_per_sample(self->input_sample_format));
+	
+	if( outlen < 0 ){
+		PyErr_SetString(FfmpegResampleError, "resampling failed");
+		return NULL;
+	}
+	
+	return Py_BuildValue("s#", outbuf, outlen);
 }
 
 static PyMethodDef ffmpegResamplerObject_Methods[] = {
@@ -417,6 +442,7 @@ PyMODINIT_FUNC init_ffmpeg(void){
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_FLT  );
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_DBL  );
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_NB   );
+	PyModule_AddIntMacro( module, AVCODEC_MAX_AUDIO_FRAME_SIZE );
 	
 	avcodec_register_all();
 	av_register_all();
