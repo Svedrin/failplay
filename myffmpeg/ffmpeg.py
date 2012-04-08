@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # kate: space-indent on; indent-width 4; replace-tabs on;
 
-from _ffmpeg import Decoder as LowLevelDecoder, DecodeError
+from _ffmpeg import Decoder as LowLevelDecoder, DecodeError, Resampler
 
 class Decoder(object):
     """ Python wrapper around the low level C module decoder.

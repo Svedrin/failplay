@@ -10,7 +10,7 @@ from PyQt4 import QtCore
 
 import audioop
 import ao
-from myffmpeg.ffmpeg import Decoder
+from myffmpeg.ffmpeg import Decoder, Resampler
 import threading
 
 from ConfigParser import ConfigParser
@@ -26,6 +26,10 @@ class Source(QtCore.QObject):
         self.gen   = None
         self.title = path.rsplit( '/', 1 )[1].rsplit('.', 1)[0]
         self.fd.dump_format()
+        if self.fd.samplerate != 44100:
+            self.resampler = Resampler( output_rate=44100, input_rate=self.fd.samplerate )
+        else:
+            self.resampler = None
 
     def start(self):
         self.emit( Source.sig_start, self.path )
@@ -43,9 +47,11 @@ class Source(QtCore.QObject):
 
     @property
     def data(self):
-        if self.gen is None:
-            self.gen = self.fd.read()
-        return self.gen
+        for chunk in self.fd.read():
+            if self.resampler is None:
+                yield chunk
+            else:
+                yield self.resampler.resample(chunk)
 
 
 class Playlist(QtCore.QAbstractTableModel):
