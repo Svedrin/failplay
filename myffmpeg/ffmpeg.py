@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # kate: space-indent on; indent-width 4; replace-tabs on;
 
-from _ffmpeg import Decoder as LowLevelDecoder, DecodeError, Resampler
+from _ffmpeg import Decoder as LowLevelDecoder, DecodeError, Resampler, get_bytes_per_sample, get_sample_fmt_name
 
 class Decoder(object):
     """ Python wrapper around the low level C module decoder.
@@ -41,11 +41,12 @@ class Decoder(object):
     metadata   = property( lambda self: self._decoder.get_metadata(),   doc="Metadata from the input file's tags." )
     codec      = property( lambda self: self._decoder.get_codec(),      doc="The name of the codec used for the stream.")
     samplerate = property( lambda self: self._decoder.get_samplerate(), doc="The sample rate of the input stream." )
+    samplefmt  = property( lambda self: self._decoder.get_samplefmt(),  doc="The sample format of the input stream." )
 
     @property
     def position(self):
         """ The player's position in the file in seconds. """
-        return self._readbytes / float(self.samplerate * self.channels * 16 / 8)
+        return self._readbytes / float(self.samplerate * self.channels * get_bytes_per_sample(self.samplefmt))
 
     def read(self, bytes=4096):
         """ Get chunks of exactly ``bytes`` length. """
