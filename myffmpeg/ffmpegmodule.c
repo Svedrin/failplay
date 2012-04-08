@@ -46,14 +46,14 @@ typedef struct {
 	AVFormatContext *pFormatCtx;
 	AVCodecContext *pCodecCtx;
 	AVStream *pStream;
-} ffmpegObject;
+} ffmpegDecoderObject;
 
 
 
 static PyObject* ffmpeg_decoder_new( PyTypeObject* type, PyObject* args ){
-	ffmpegObject* self;
+	ffmpegDecoderObject* self;
 	
-	self = (ffmpegObject *) type->tp_alloc( type, 0 );
+	self = (ffmpegDecoderObject *) type->tp_alloc( type, 0 );
 	
 	if( self == NULL )
 		return NULL;
@@ -89,41 +89,41 @@ static PyObject* ffmpeg_decoder_new( PyTypeObject* type, PyObject* args ){
 	return (PyObject *)self;
 }
 
-static void ffmpeg_decoder_dealloc( ffmpegObject* self ){
+static void ffmpeg_decoder_dealloc( ffmpegDecoderObject* self ){
 	avcodec_close(self->pCodecCtx);
 	avformat_close_input(&self->pFormatCtx);
 }
 
-static PyObject* ffmpeg_decoder_dump_format( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_dump_format( ffmpegDecoderObject* self ){
 	av_dump_format(self->pFormatCtx, 0, self->infile, 0);
 	Py_RETURN_NONE;
 }
 
-static PyObject* ffmpeg_decoder_get_bitrate( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_bitrate( ffmpegDecoderObject* self ){
 	return Py_BuildValue( "i", self->pCodecCtx->bit_rate );
 }
 
-static PyObject* ffmpeg_decoder_get_samplerate( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_samplerate( ffmpegDecoderObject* self ){
 	return Py_BuildValue( "i", self->pCodecCtx->sample_rate );
 }
 
-static PyObject* ffmpeg_decoder_get_channels( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_channels( ffmpegDecoderObject* self ){
 	return Py_BuildValue( "i", self->pCodecCtx->channels );
 }
 
-static PyObject* ffmpeg_decoder_get_codec( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_codec( ffmpegDecoderObject* self ){
 	return Py_BuildValue( "s", self->pCodecCtx->codec->name );
 }
 
-static PyObject* ffmpeg_decoder_get_duration( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_duration( ffmpegDecoderObject* self ){
 	return Py_BuildValue( "d", self->pFormatCtx->duration / (double)AV_TIME_BASE );
 }
 
-static PyObject* ffmpeg_decoder_get_path( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_path( ffmpegDecoderObject* self ){
 	return Py_BuildValue( "s", self->infile );
 }
 
-static PyObject* ffmpeg_decoder_get_metadata( ffmpegObject* self ){
+static PyObject* ffmpeg_decoder_get_metadata( ffmpegDecoderObject* self ){
 	PyObject* metadict = PyDict_New();
 	AVDictionaryEntry *metaent = NULL;
 	while( (metaent = av_dict_get(self->pFormatCtx->metadata, "", metaent, AV_DICT_IGNORE_SUFFIX)) != NULL ){
@@ -141,7 +141,7 @@ static PyObject* ffmpeg_decoder_get_metadata( ffmpegObject* self ){
 }
 
 
-static PyObject* ffmpeg_decoder_read( ffmpegObject* self, PyObject* args ){
+static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self, PyObject* args ){
 	AVPacket avpkt;
 	AVFrame *avfrm;
 	int got_frame;
@@ -178,7 +178,7 @@ static PyObject* ffmpeg_decoder_read( ffmpegObject* self, PyObject* args ){
 }
 
 
-static PyMethodDef ffmpegObject_Methods[] = {
+static PyMethodDef ffmpegDecoderObject_Methods[] = {
 	{ "read",           (PyCFunction)ffmpeg_decoder_read,           METH_NOARGS, "read()\nRead the next frame and return its data." },
 	{ "dump_format",    (PyCFunction)ffmpeg_decoder_dump_format,    METH_NOARGS, "dump_format()\nDump a bit of info about the file to stdout." },
 	{ "get_path",       (PyCFunction)ffmpeg_decoder_get_path,       METH_NOARGS, "get_path()\nReturn the path to the input file." },
@@ -191,7 +191,7 @@ static PyMethodDef ffmpegObject_Methods[] = {
 	{ NULL, NULL, 0, NULL }
 };
 
-static PyMemberDef ffmpegObject_Members[] = {
+static PyMemberDef ffmpegDecoderObject_Members[] = {
 	{ NULL }
 };
 
@@ -199,7 +199,7 @@ static PyTypeObject ffmpegDecoder = {
 	PyObject_HEAD_INIT(NULL)
 	0,                         /*ob_size*/
 	"ffmpeg.Decoder",          /*tp_name*/
-	sizeof( ffmpegObject ),    /*tp_basicsize*/
+	sizeof( ffmpegDecoderObject ),    /*tp_basicsize*/
 	0,                         /*tp_itemsize*/
 	(destructor)ffmpeg_decoder_dealloc,/*tp_dealloc*/
 	0,                         /*tp_print*/
@@ -224,8 +224,8 @@ static PyTypeObject ffmpegDecoder = {
 	0,                         /* tp_weaklistoffset */
 	0,                         /* tp_iter */
 	0,                         /* tp_iternext */
-	ffmpegObject_Methods,      /* tp_methods */
-	ffmpegObject_Members,      /* tp_members */
+	ffmpegDecoderObject_Methods,      /* tp_methods */
+	ffmpegDecoderObject_Members,      /* tp_members */
 	0,                         /* tp_getset */
 	0,                         /* tp_base */
 	0,                         /* tp_dict */
