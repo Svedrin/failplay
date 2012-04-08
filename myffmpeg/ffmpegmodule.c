@@ -115,6 +115,10 @@ static PyObject* ffmpeg_decoder_get_samplerate( ffmpegDecoderObject* self ){
 	return Py_BuildValue( "i", self->pCodecCtx->sample_rate );
 }
 
+static PyObject* ffmpeg_decoder_get_samplefmt( ffmpegDecoderObject* self ){
+	return Py_BuildValue( "i", self->pCodecCtx->sample_fmt );
+}
+
 static PyObject* ffmpeg_decoder_get_channels( ffmpegDecoderObject* self ){
 	return Py_BuildValue( "i", self->pCodecCtx->channels );
 }
@@ -194,6 +198,7 @@ static PyMethodDef ffmpegDecoderObject_Methods[] = {
 	{ "get_path",       (PyCFunction)ffmpeg_decoder_get_path,       METH_NOARGS, "get_path()\nReturn the path to the input file." },
 	{ "get_bitrate",    (PyCFunction)ffmpeg_decoder_get_bitrate,    METH_NOARGS, "get_bitrate()\nReturn the bit rate of the decoded file." },
 	{ "get_samplerate", (PyCFunction)ffmpeg_decoder_get_samplerate, METH_NOARGS, "get_samplerate()\nReturn the sample rate of the decoded file." },
+	{ "get_samplefmt",  (PyCFunction)ffmpeg_decoder_get_samplefmt,  METH_NOARGS, "get_samplefmt()\nReturn the sample format of the decoded file." },
 	{ "get_channels",   (PyCFunction)ffmpeg_decoder_get_channels,   METH_NOARGS, "get_channels()\nReturn the number of channels in the decoded file." },
 	{ "get_duration",   (PyCFunction)ffmpeg_decoder_get_duration,   METH_NOARGS, "get_duration()\nReturn the duration of the decoded file in seconds." },
 	{ "get_metadata",   (PyCFunction)ffmpeg_decoder_get_metadata,   METH_NOARGS, "get_metadata()\nReturn a dict containing the file's meta data." },
@@ -397,7 +402,34 @@ static PyTypeObject ffmpegResampler = {
  *  Module initialization.
  */
 
+static PyObject* ffmpeg_get_sample_fmt_name( PyObject* module, PyObject* args ){
+	enum AVSampleFormat sample_fmt;
+	const char* fmt_name;
+	
+	if( !PyArg_ParseTuple( args, "i", &sample_fmt ) )
+		return NULL;
+	
+	fmt_name = av_get_sample_fmt_name(sample_fmt);
+	
+	if( fmt_name == NULL ){
+		PyErr_SetString(PyExc_KeyError, "Sample format not recognized");
+	}
+	
+	return Py_BuildValue( "s", fmt_name );
+}
+
+static PyObject* ffmpeg_get_bytes_per_sample( PyObject* module, PyObject* args ){
+	enum AVSampleFormat sample_fmt;
+	
+	if( !PyArg_ParseTuple( args, "i", &sample_fmt ) )
+		return NULL;
+	
+	return Py_BuildValue( "i", av_get_bytes_per_sample(sample_fmt) );
+}
+
 static PyMethodDef ffmpegmodule_Methods[] = {
+	{ "get_sample_fmt_name", (PyCFunction)ffmpeg_get_sample_fmt_name, METH_VARARGS, "get_sample_fmt_name(format)\nReturn the given sample format's name."},
+	{ "get_bytes_per_sample", (PyCFunction)ffmpeg_get_bytes_per_sample, METH_VARARGS, "get_sample_fmt_name(format)\nReturn the size of one sample in bytes."},
 	{ NULL, NULL, 0, NULL }
 };
 
