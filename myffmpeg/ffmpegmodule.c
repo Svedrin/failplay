@@ -27,6 +27,8 @@
 #define DECODER_DOCSTRING ""\
 	"This class handles decoding audio frames.\n"\
 	"\n"\
+	"   Decoder(fpath)\n"\
+	"\n"\
 	"Usage:\n"\
 	">>> import ao\n" \
 	">>> pcm = ao.AudioDevice()\n" \
@@ -37,8 +39,13 @@
 #define RESAMPLER_DOCSTRING ""\
 	"This class handles resampling audio frames.\n"\
 	"\n"\
-	"Usage:\n"\
-	"wermer sehn"
+	"   Resampler(output_rate, input_rate, output_channels=2, input_channels=2,\n"\
+	"             output_sample_format=AV_SAMPLE_FMT_S16, \n"\
+	"             input_sample_format=AV_SAMPLE_FMT_S16, \n"\
+	"             filter_length=16, log2_phase_count=10, \n"\
+	"             linear=0, cutoff=1 \n"\
+	"   )\n"\
+	""
 
 
 static PyObject *FfmpegDecodeError;
@@ -153,7 +160,7 @@ static PyObject* ffmpeg_decoder_get_metadata( ffmpegDecoderObject* self ){
 }
 
 
-static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self, PyObject* args ){
+static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 	AVPacket avpkt;
 	AVFrame *avfrm;
 	int got_frame;
