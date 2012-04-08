@@ -195,7 +195,7 @@ static PyMemberDef ffmpegObject_Members[] = {
 	{ NULL }
 };
 
-static PyTypeObject ffmpegType = {
+static PyTypeObject ffmpegDecoder = {
 	PyObject_HEAD_INIT(NULL)
 	0,                         /*ob_size*/
 	"ffmpeg.Decoder",          /*tp_name*/
@@ -254,14 +254,14 @@ static PyMethodDef ffmpegmodule_Methods[] = {
 PyMODINIT_FUNC init_ffmpeg(void){
 	PyObject* module;
 	
-	if( PyType_Ready( &ffmpegType ) < 0 ){
+	if( PyType_Ready( &ffmpegDecoder ) < 0 ){
 		return;
 	}
 	
 	module = Py_InitModule3( "_ffmpeg", ffmpegmodule_Methods, MODULE_DOCSTRING );
 	
-	Py_INCREF( &ffmpegType );
-	PyModule_AddObject( module, "Decoder", (PyObject *)&ffmpegType );
+	Py_INCREF( &ffmpegDecoder );
+	PyModule_AddObject( module, "Decoder", (PyObject *)&ffmpegDecoder );
 	
 	FfmpegDecodeError = PyErr_NewException("ffmpeg.DecodeError", NULL, NULL);
 	Py_INCREF(FfmpegDecodeError);
