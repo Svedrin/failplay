@@ -34,11 +34,21 @@
 	">>> for chunk in decoder.read():\n"\
 	"...     pcm.play( chunk )\n"\
 	""
+#define RESAMPLER_DOCSTRING ""\
+	"This class handles resampling audio frames.\n"\
+	"\n"\
+	"Usage:\n"\
+	"wermer sehn"
 
 
 static PyObject *FfmpegDecodeError;
+static PyObject *FfmpegResampleError;
 static PyObject *FfmpegFileError;
 
+
+/**
+ * DECODER
+ */
 
 typedef struct {
 	PyObject_HEAD
@@ -48,10 +58,10 @@ typedef struct {
 	AVStream *pStream;
 } ffmpegDecoderObject;
 
-
-
 static PyObject* ffmpeg_decoder_new( PyTypeObject* type, PyObject* args ){
 	ffmpegDecoderObject* self;
+	AVCodec *codec;
+	int streamIdx;
 	
 	self = (ffmpegDecoderObject *) type->tp_alloc( type, 0 );
 	
@@ -71,9 +81,7 @@ static PyObject* ffmpeg_decoder_new( PyTypeObject* type, PyObject* args ){
 		return NULL;
 	}
 	
-	AVCodec *codec;
-	
-	int streamIdx = av_find_best_stream(self->pFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0);
+	streamIdx = av_find_best_stream(self->pFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0);
 	if( streamIdx < 0 ){
 		PyErr_SetString(FfmpegDecodeError, "could not find an audio stream");
 		return NULL;
@@ -145,6 +153,8 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self, PyObject* args 
 	AVPacket avpkt;
 	AVFrame *avfrm;
 	int got_frame;
+	int data_size;
+	PyObject* ret;
 	
 	if( av_read_frame(self->pFormatCtx, &avpkt) < 0 ){
 		PyErr_SetString(PyExc_StopIteration, "no more frames to read");
@@ -168,11 +178,11 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self, PyObject* args 
 		return Py_BuildValue( "s", "" );
 	}
 	
-	int data_size = av_samples_get_buffer_size(
+	data_size = av_samples_get_buffer_size(
 		NULL, self->pCodecCtx->channels, avfrm->nb_samples, self->pCodecCtx->sample_fmt, 1
 	);
 	
-	PyObject* ret = Py_BuildValue( "s#", avfrm->data[0], data_size );
+	ret = Py_BuildValue( "s#", avfrm->data[0], data_size );
 	av_free(avfrm);
 	return ret;
 }
@@ -238,16 +248,134 @@ static PyTypeObject ffmpegDecoder = {
 };
 
 
+/**
+ * RESAMPLER
+ */
 
+typedef struct {
+	PyObject_HEAD
+	ReSampleContext *pResampleCtx;
+} ffmpegResamplerObject;
 
-static PyMethodDef ffmpegmodule_Methods[] = {
+static PyObject* ffmpeg_resampler_new( PyTypeObject* type, PyObject* args, PyObject* kw ){
+	ffmpegResamplerObject* self;
+	
+	int output_rate = 0;
+	int input_rate  = 0;
+	int output_channels = 2;
+	int input_channels  = 2;
+	enum AVSampleFormat output_sample_format = AV_SAMPLE_FMT_S16;
+	enum AVSampleFormat input_sample_format  = AV_SAMPLE_FMT_S16;
+	/* The following defaults are blindly copied from
+	 * http://stackoverflow.com/questions/5501357/the-problem-with-ffmpeg-on-android
+	 */
+	int filter_length = 16;
+	int log2_phase_count = 10;
+	int linear = 0;
+	double cutoff = 1;
+	
+	static char *kwlist[] = {
+		"output_rate", "input_rate", "output_channels", "input_channels",
+		"output_sample_format", "input_sample_format",
+		"filter_length", "log2_phase_count", "linear", "cutoff",
+		NULL};
+	
+	self = (ffmpegResamplerObject *) type->tp_alloc( type, 0 );
+	
+	if( self == NULL )
+		return NULL;
+	
+	if( !PyArg_ParseTupleAndKeywords( args, kw, "ii|iiiiiiid", kwlist,
+		output_rate, input_rate, output_channels, input_channels,
+		output_sample_format, input_sample_format,
+		filter_length, log2_phase_count, linear, cutoff
+		) ){
+		return NULL;
+	}
+	
+	self->pResampleCtx = av_audio_resample_init(
+		output_channels, input_channels,
+		output_rate, input_rate,
+		output_sample_format, input_sample_format,
+		filter_length, log2_phase_count, linear, cutoff);
+	
+	if( self->pResampleCtx == NULL ){
+		PyErr_SetString(FfmpegResampleError, "could not initialize resampler");
+		return NULL;
+	}
+	
+	return (PyObject *)self;
+}
+
+static void ffmpeg_resampler_dealloc( ffmpegResamplerObject* self ){
+	audio_resample_close(self->pResampleCtx);
+}
+
+static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObject* args ){
+	/* int audio_resample(ReSampleContext *s, short *output, short *input, int nb_samples); */
+	return Py_BuildValue("i", 1);
+}
+
+static PyMethodDef ffmpegResamplerObject_Methods[] = {
+	{ "resample", (PyCFunction)ffmpeg_resampler_resample, METH_VARARGS, "resample(input)\nResample the input stream data." },
 	{ NULL, NULL, 0, NULL }
+};
+
+static PyMemberDef ffmpegResamplerObject_Members[] = {
+	{ NULL }
+};
+
+static PyTypeObject ffmpegResampler = {
+	PyObject_HEAD_INIT(NULL)
+	0,                         /*ob_size*/
+	"ffmpeg.Resampler",          /*tp_name*/
+	sizeof( ffmpegResamplerObject ),    /*tp_basicsize*/
+	0,                         /*tp_itemsize*/
+	(destructor)ffmpeg_resampler_dealloc,/*tp_dealloc*/
+	0,                         /*tp_print*/
+	0,                         /*tp_getattr*/
+	0,                         /*tp_setattr*/
+	0,                         /*tp_compare*/
+	0,                         /*tp_repr*/
+	0,                         /*tp_as_number*/
+	0,                         /*tp_as_sequence*/
+	0,                         /*tp_as_mapping*/
+	0,                         /*tp_hash */
+	0,                         /*tp_call*/
+	0,                         /*tp_str*/
+	0,                         /*tp_getattro*/
+	0,                         /*tp_setattro*/
+	0,                         /*tp_as_buffer*/
+	Py_TPFLAGS_DEFAULT,        /*tp_flags*/
+	RESAMPLER_DOCSTRING,         /* tp_doc */
+	0,                         /* tp_traverse */
+	0,                         /* tp_clear */
+	0,                         /* tp_richcompare */
+	0,                         /* tp_weaklistoffset */
+	0,                         /* tp_iter */
+	0,                         /* tp_iternext */
+	ffmpegResamplerObject_Methods,      /* tp_methods */
+	ffmpegResamplerObject_Members,      /* tp_members */
+	0,                         /* tp_getset */
+	0,                         /* tp_base */
+	0,                         /* tp_dict */
+	0,                         /* tp_descr_get */
+	0,                         /* tp_descr_set */
+	0,                         /* tp_dictoffset */
+	0,                         /* tp_init */
+	0,                         /* tp_alloc */
+	(newfunc)ffmpeg_resampler_new,       /* tp_new */
 };
 
 
 /**
  *  Module initialization.
  */
+
+static PyMethodDef ffmpegmodule_Methods[] = {
+	{ NULL, NULL, 0, NULL }
+};
+
 #ifndef PyMODINIT_FUNC	/* declarations for DLL import/export */
 #define PyMODINIT_FUNC void
 #endif
@@ -258,18 +386,37 @@ PyMODINIT_FUNC init_ffmpeg(void){
 		return;
 	}
 	
+	if( PyType_Ready( &ffmpegResampler ) < 0 ){
+		return;
+	}
+	
 	module = Py_InitModule3( "_ffmpeg", ffmpegmodule_Methods, MODULE_DOCSTRING );
 	
 	Py_INCREF( &ffmpegDecoder );
 	PyModule_AddObject( module, "Decoder", (PyObject *)&ffmpegDecoder );
 	
+	Py_INCREF( &ffmpegResampler );
+	PyModule_AddObject( module, "Resampler", (PyObject *)&ffmpegResampler );
+	
 	FfmpegDecodeError = PyErr_NewException("ffmpeg.DecodeError", NULL, NULL);
 	Py_INCREF(FfmpegDecodeError);
 	PyModule_AddObject( module, "DecodeError", FfmpegDecodeError );
 	
+	FfmpegResampleError = PyErr_NewException("ffmpeg.ResampleError", NULL, NULL);
+	Py_INCREF(FfmpegResampleError);
+	PyModule_AddObject( module, "ResampleError", FfmpegResampleError );
+	
 	FfmpegFileError = PyErr_NewException("ffmpeg.FileError", NULL, NULL);
 	Py_INCREF(FfmpegFileError);
 	PyModule_AddObject( module, "FileError", FfmpegFileError );
+	
+	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_NONE );
+	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_U8   );
+	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_S16  );
+	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_S32  );
+	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_FLT  );
+	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_DBL  );
+	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_NB   );
 	
 	avcodec_register_all();
 	av_register_all();
