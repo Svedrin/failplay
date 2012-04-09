@@ -335,21 +335,24 @@ static void ffmpeg_resampler_dealloc( ffmpegResamplerObject* self ){
 
 static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObject* args ){
 	const char* inbuf;
-	int inlen;
+	int innb;   /* number of input frames */
+	int inlen;  /* length of input buffer */
 	unsigned char outbuf[AVCODEC_MAX_AUDIO_FRAME_SIZE];
-	int outlen;
+	int outnb;  /* number of output frames */
+	int outlen; /* length of output buffer */
 	
 	if( !PyArg_ParseTuple( args, "s#", &inbuf, &inlen ) )
 		return NULL;
 	
-	outlen = audio_resample(self->pResampleCtx, (short *)outbuf, (short *)inbuf,
-		inlen / self->input_channels * av_get_bytes_per_sample(self->input_sample_format));
+	innb  = inlen / self->input_channels / av_get_bytes_per_sample(self->input_sample_format);
+	outnb = audio_resample(self->pResampleCtx, (short *)outbuf, (short *)inbuf, innb);
 	
-	if( outlen < 0 ){
+	if( outnb < 0 ){
 		PyErr_SetString(FfmpegResampleError, "resampling failed");
 		return NULL;
 	}
 	
+	outlen = outnb * self->output_channels * av_get_bytes_per_sample(self->output_sample_format);
 	return Py_BuildValue("s#", outbuf, outlen);
 }
 
