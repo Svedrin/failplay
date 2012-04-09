@@ -17,7 +17,7 @@ from _ffmpeg import Decoder as LowLevelDecoder, Resampler, \
 class Decoder(object):
     """ Python wrapper around the low level C module decoder.
 
-            Decoder(fpath, errignore=True)
+            Decoder(fpath)
 
         It is used the same way as the C module:
         >>> import ao
@@ -28,20 +28,16 @@ class Decoder(object):
 
         In contrast to the low level Decoder, this class's read() method makes
         sure to always return the requested number of bytes (except at EOF),
-        even if that requires multiple low level read() calls. Furthermore,
-        DecodeErrors are ignored by default because some broken files cause them
-        unnecessarily. This can be disabled by setting errignore=False, in which
-        case all DecodeErrors will be raised.
+        even if that requires multiple low level read() calls.
 
         In addition to the properties that retrive information from the Decoder,
         the `position' property calculates the player's position in the file from
         the amount of bytes already retrieved using the read() method.
     """
 
-    def __init__(self, fpath, errignore=True):
+    def __init__(self, fpath):
         self._decoder = LowLevelDecoder(fpath)
         self._buffer  = ""
-        self._errignore = errignore
         self._readbytes = 0
 
     channels   = property( lambda self: self._decoder.get_channels(),   doc="The number of channels in the input stream." )
@@ -63,18 +59,23 @@ class Decoder(object):
         while True:
             while len(self._buffer) < bytes:
                 try:
-                    self._buffer += self._decoder.read()
+                    data = self._decoder.read()
                 except StopIteration:
                     if self._buffer:
                         yield self._buffer
                     raise StopIteration
                 except DecodeError, err:
-                    if not self._errignore:
+                    # Ignore DecodeErrors at the very beginning of the file
+                    if self._readbytes or self.duration == 0:
                         raise err
+                    else:
+                        print "Ignoring DecodeError %s in file %s" % (err.message, self.path)
+                else:
+                    self._buffer += data
+                    self._readbytes += len(data)
 
             ret = self._buffer[:bytes]
             self._buffer = self._buffer[bytes:]
-            self._readbytes += bytes
             yield ret
 
     def dump_format(self):
