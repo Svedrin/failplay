@@ -12,7 +12,7 @@
  *      Install the modules into the Python module directory, usually
  *        /usr/lib/python<version>/site-packages.
  *      Note that this step is not necessary if you only want to use
- *      the moduules temporarily for testing, as modules can also be
+ *      the modules temporarily for testing, as modules can also be
  *      loaded from the current working directory.
  *
  *  Copyright (C) 2009, Michael "Svedrin" Ziegler <diese-addy@funzt-halt.net>
@@ -39,6 +39,6 @@ fismodule = Extension(
 setup(
 	name = 'PyFfmpeg',
 	version = '1.0',
-	description = 'Embeds the FIS processor from MATLAB into Python',
+	description = 'Python module that allows decoding and resampling of audio files',
 	ext_modules = [fismodule]
 	)
