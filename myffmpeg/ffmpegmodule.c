@@ -185,8 +185,9 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 	av_free_packet(&avpkt);
 	
 	if (got_frame == 0) {
+		PyErr_SetString(FfmpegDecodeError, "codec didn't get a frame");
 		av_free(avfrm);
-		return Py_BuildValue( "s", "" );
+		return NULL;
 	}
 	
 	data_size = av_samples_get_buffer_size(
