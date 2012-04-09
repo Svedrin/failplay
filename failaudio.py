@@ -46,12 +46,19 @@ class Source(QtCore.QObject):
         return self.fd.position
 
     @property
-    def data(self):
+    def _data(self):
         for chunk in self.fd.read():
             if self.resampler is None:
                 yield chunk
             else:
                 yield self.resampler.resample(chunk)
+        raise StopIteration
+
+    @property
+    def data(self):
+        if self.gen is None:
+            self.gen = self._data
+        return self.gen
 
 
 class Playlist(QtCore.QAbstractTableModel):
