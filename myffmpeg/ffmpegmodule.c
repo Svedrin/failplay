@@ -115,31 +115,31 @@ static PyObject* ffmpeg_decoder_dump_format( ffmpegDecoderObject* self ){
 }
 
 static PyObject* ffmpeg_decoder_get_bitrate( ffmpegDecoderObject* self ){
-	return Py_BuildValue( "i", self->pCodecCtx->bit_rate );
+	return PyInt_FromLong( self->pCodecCtx->bit_rate );
 }
 
 static PyObject* ffmpeg_decoder_get_samplerate( ffmpegDecoderObject* self ){
-	return Py_BuildValue( "i", self->pCodecCtx->sample_rate );
+	return PyInt_FromLong( self->pCodecCtx->sample_rate );
 }
 
 static PyObject* ffmpeg_decoder_get_samplefmt( ffmpegDecoderObject* self ){
-	return Py_BuildValue( "i", self->pCodecCtx->sample_fmt );
+	return PyInt_FromLong( self->pCodecCtx->sample_fmt );
 }
 
 static PyObject* ffmpeg_decoder_get_channels( ffmpegDecoderObject* self ){
-	return Py_BuildValue( "i", self->pCodecCtx->channels );
+	return PyInt_FromLong( self->pCodecCtx->channels );
 }
 
 static PyObject* ffmpeg_decoder_get_codec( ffmpegDecoderObject* self ){
-	return Py_BuildValue( "s", self->pCodecCtx->codec->name );
+	return PyString_FromString( self->pCodecCtx->codec->name );
 }
 
 static PyObject* ffmpeg_decoder_get_duration( ffmpegDecoderObject* self ){
-	return Py_BuildValue( "d", self->pFormatCtx->duration / (double)AV_TIME_BASE );
+	return PyFloat_FromDouble( self->pFormatCtx->duration / (double)AV_TIME_BASE );
 }
 
 static PyObject* ffmpeg_decoder_get_path( ffmpegDecoderObject* self ){
-	return Py_BuildValue( "s", self->infile );
+	return PyString_FromString( self->infile );
 }
 
 static PyObject* ffmpeg_decoder_get_metadata( ffmpegDecoderObject* self ){
@@ -172,7 +172,6 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 		return NULL;
 	}
 	
-	
 	got_frame = 0;
 	avfrm = avcodec_alloc_frame();
 	avcodec_get_frame_defaults(avfrm);
@@ -194,7 +193,7 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 		NULL, self->pCodecCtx->channels, avfrm->nb_samples, self->pCodecCtx->sample_fmt, 1
 	);
 	
-	ret = Py_BuildValue( "s#", avfrm->data[0], data_size );
+	ret = PyString_FromStringAndSize( (const char*)avfrm->data[0], data_size );
 	av_free(avfrm);
 	return ret;
 }
@@ -338,7 +337,7 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	const char* inbuf;
 	int innb;   /* number of input frames */
 	int inlen;  /* length of input buffer */
-	unsigned char outbuf[AVCODEC_MAX_AUDIO_FRAME_SIZE];
+	char outbuf[AVCODEC_MAX_AUDIO_FRAME_SIZE];
 	int outnb;  /* number of output frames */
 	int outlen; /* length of output buffer */
 	
@@ -354,7 +353,7 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	}
 	
 	outlen = outnb * self->output_channels * av_get_bytes_per_sample(self->output_sample_format);
-	return Py_BuildValue("s#", outbuf, outlen);
+	return PyString_FromStringAndSize( outbuf, outlen);
 }
 
 static PyMethodDef ffmpegResamplerObject_Methods[] = {
@@ -426,7 +425,7 @@ static PyObject* ffmpeg_get_sample_fmt_name( PyObject* module, PyObject* args ){
 		PyErr_SetString(PyExc_KeyError, "Sample format not recognized");
 	}
 	
-	return Py_BuildValue( "s", fmt_name );
+	return PyString_FromString( fmt_name );
 }
 
 static PyObject* ffmpeg_get_bytes_per_sample( PyObject* module, PyObject* args ){
@@ -435,7 +434,7 @@ static PyObject* ffmpeg_get_bytes_per_sample( PyObject* module, PyObject* args )
 	if( !PyArg_ParseTuple( args, "i", &sample_fmt ) )
 		return NULL;
 	
-	return Py_BuildValue( "i", av_get_bytes_per_sample(sample_fmt) );
+	return PyInt_FromLong( av_get_bytes_per_sample(sample_fmt) );
 }
 
 static PyMethodDef ffmpegmodule_Methods[] = {
