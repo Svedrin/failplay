@@ -219,44 +219,14 @@ static PyMemberDef ffmpegDecoderObject_Members[] = {
 
 static PyTypeObject ffmpegDecoder = {
 	PyObject_HEAD_INIT(NULL)
-	0,                         /*ob_size*/
-	"ffmpeg.Decoder",          /*tp_name*/
-	sizeof( ffmpegDecoderObject ),    /*tp_basicsize*/
-	0,                         /*tp_itemsize*/
-	(destructor)ffmpeg_decoder_dealloc,/*tp_dealloc*/
-	0,                         /*tp_print*/
-	0,                         /*tp_getattr*/
-	0,                         /*tp_setattr*/
-	0,                         /*tp_compare*/
-	0,                         /*tp_repr*/
-	0,                         /*tp_as_number*/
-	0,                         /*tp_as_sequence*/
-	0,                         /*tp_as_mapping*/
-	0,                         /*tp_hash */
-	0,                         /*tp_call*/
-	0,                         /*tp_str*/
-	0,                         /*tp_getattro*/
-	0,                         /*tp_setattro*/
-	0,                         /*tp_as_buffer*/
-	Py_TPFLAGS_DEFAULT,        /*tp_flags*/
-	DECODER_DOCSTRING,         /* tp_doc */
-	0,                         /* tp_traverse */
-	0,                         /* tp_clear */
-	0,                         /* tp_richcompare */
-	0,                         /* tp_weaklistoffset */
-	0,                         /* tp_iter */
-	0,                         /* tp_iternext */
-	ffmpegDecoderObject_Methods,      /* tp_methods */
-	ffmpegDecoderObject_Members,      /* tp_members */
-	0,                         /* tp_getset */
-	0,                         /* tp_base */
-	0,                         /* tp_dict */
-	0,                         /* tp_descr_get */
-	0,                         /* tp_descr_set */
-	0,                         /* tp_dictoffset */
-	0,                         /* tp_init */
-	0,                         /* tp_alloc */
-	(newfunc)ffmpeg_decoder_new,       /* tp_new */
+	.tp_name      = "ffmpeg.Decoder",
+	.tp_basicsize = sizeof( ffmpegDecoderObject ),
+	.tp_dealloc   = (destructor)ffmpeg_decoder_dealloc,
+	.tp_flags     = Py_TPFLAGS_DEFAULT,
+	.tp_doc       = DECODER_DOCSTRING,
+	.tp_methods   = ffmpegDecoderObject_Methods,
+	.tp_members   = ffmpegDecoderObject_Members,
+	.tp_new       = (newfunc)ffmpeg_decoder_new,
 };
 
 
@@ -375,44 +345,14 @@ static PyMemberDef ffmpegResamplerObject_Members[] = {
 
 static PyTypeObject ffmpegResampler = {
 	PyObject_HEAD_INIT(NULL)
-	0,                         /*ob_size*/
-	"ffmpeg.Resampler",          /*tp_name*/
-	sizeof( ffmpegResamplerObject ),    /*tp_basicsize*/
-	0,                         /*tp_itemsize*/
-	(destructor)ffmpeg_resampler_dealloc,/*tp_dealloc*/
-	0,                         /*tp_print*/
-	0,                         /*tp_getattr*/
-	0,                         /*tp_setattr*/
-	0,                         /*tp_compare*/
-	0,                         /*tp_repr*/
-	0,                         /*tp_as_number*/
-	0,                         /*tp_as_sequence*/
-	0,                         /*tp_as_mapping*/
-	0,                         /*tp_hash */
-	0,                         /*tp_call*/
-	0,                         /*tp_str*/
-	0,                         /*tp_getattro*/
-	0,                         /*tp_setattro*/
-	0,                         /*tp_as_buffer*/
-	Py_TPFLAGS_DEFAULT,        /*tp_flags*/
-	RESAMPLER_DOCSTRING,         /* tp_doc */
-	0,                         /* tp_traverse */
-	0,                         /* tp_clear */
-	0,                         /* tp_richcompare */
-	0,                         /* tp_weaklistoffset */
-	0,                         /* tp_iter */
-	0,                         /* tp_iternext */
-	ffmpegResamplerObject_Methods,      /* tp_methods */
-	ffmpegResamplerObject_Members,      /* tp_members */
-	0,                         /* tp_getset */
-	0,                         /* tp_base */
-	0,                         /* tp_dict */
-	0,                         /* tp_descr_get */
-	0,                         /* tp_descr_set */
-	0,                         /* tp_dictoffset */
-	0,                         /* tp_init */
-	0,                         /* tp_alloc */
-	(newfunc)ffmpeg_resampler_new,       /* tp_new */
+	.tp_name      = "ffmpeg.Resampler",
+	.tp_basicsize = sizeof( ffmpegResamplerObject ),
+	.tp_dealloc   = (destructor)ffmpeg_resampler_dealloc,
+	.tp_flags     = Py_TPFLAGS_DEFAULT,
+	.tp_doc       = RESAMPLER_DOCSTRING,
+	.tp_methods   = ffmpegResamplerObject_Methods,
+	.tp_members   = ffmpegResamplerObject_Members,
+	.tp_new       = (newfunc)ffmpeg_resampler_new,
 };
 
 
