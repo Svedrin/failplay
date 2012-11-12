@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
- *  This script uses distutils to build and install the FIS and Marvin
- *  Python modules.
+ *  This script uses distutils to build and install the ffmpeg
+ *  Python module.
  *
  *  Usage:
  *    python setup.py build
@@ -15,7 +15,7 @@
  *      the modules temporarily for testing, as modules can also be
  *      loaded from the current working directory.
  *
- *  Copyright (C) 2009, Michael "Svedrin" Ziegler <diese-addy@funzt-halt.net>
+ *  Copyright (C) 2012, Michael "Svedrin" Ziegler <diese-addy@funzt-halt.net>
  *
  *  This code is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by

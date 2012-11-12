@@ -1,10 +1,10 @@
 /**
  *  Python Module to decode audio files using FFmpeg's lavc.
  *
- *  Copyright © 2009/10, Michael "Svedrin" Ziegler <diese-addy@funzt-halt.net>
+ *  Copyright © 2012, Michael "Svedrin" Ziegler <diese-addy@funzt-halt.net>
  *
  *  To compile this file into a Python module, run `python setup.py build`.
- *  The compiled binary will be put into build/lib.<platform>/fis.so.
+ *  The compiled binary will be put into build/lib.<platform>/_ffmpeg.so.
  *
  *  The FFMPEG module is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
