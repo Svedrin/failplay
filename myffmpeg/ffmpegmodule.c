@@ -454,6 +454,11 @@ PyMODINIT_FUNC init_ffmpeg(void){
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_S32  );
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_FLT  );
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_DBL  );
+	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_U8P  );
+	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_S16P );
+	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_S32P );
+	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_FLTP );
+	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_DBLP );
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_NB   );
 	PyModule_AddIntMacro( module, AVCODEC_MAX_AUDIO_FRAME_SIZE );
 	
