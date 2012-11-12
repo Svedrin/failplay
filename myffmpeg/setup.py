@@ -39,13 +39,14 @@ ffmpegmodule = Extension(
 setup(
 	name = 'myffmpeg',
 	version = '1.0',
-	description = 'Python module that allows decoding and resampling of audio files',
+	description = "Python module that allows decoding and resampling of audio files using the ffmpeg libraries",
+	keywords    = ["ffmpeg", "lavc", "libavcodec", "libavformat", "decoding", "decoder", "resampling", "resampler", "audio"],
 	ext_modules = [ffmpegmodule],
 	py_modules  = ["ffmpeg"],
 	author="Michael Ziegler",
 	author_email='diese-addy@funzt-halt.net',
 	url='http://bitbucket.org/Svedrin/failplay/src/tip/myffmpeg',
-	download_url=('http://bitbucket.org/Svedrin/failplay/get/tip.tar.bz2'),
+	download_url='https://bitbucket.org/Svedrin/failplay/downloads/myffmpeg-1.0.tar.gz',
 	classifiers=[
 		'Development Status :: 5 - Production/Stable',
 		'Intended Audience :: Developers',
