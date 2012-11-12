@@ -402,7 +402,7 @@ static PyObject* ffmpeg_get_bytes_per_sample( PyObject* module, PyObject* args )
 		return NULL;
 	
 	if( bps = av_get_bytes_per_sample(sample_fmt) )
-		return PyInt_FromLong( av_get_bytes_per_sample(sample_fmt) );
+		return PyInt_FromLong( bps );
 	
 	PyErr_SetString(PyExc_KeyError, "Sample format not recognized");
 	return NULL;
