@@ -69,36 +69,55 @@ static PyObject* ffmpeg_decoder_new( PyTypeObject* type, PyObject* args ){
 	ffmpegDecoderObject* self;
 	AVCodec *codec;
 	int streamIdx;
+	int err = 0;
 	
 	self = (ffmpegDecoderObject *) type->tp_alloc( type, 0 );
 	
 	if( self == NULL )
 		return NULL;
 	
-	if( !PyArg_ParseTuple( args, "s", &self->infile ) )
-		return NULL;
+	self->pFormatCtx = NULL;
+	self->pCodecCtx  = NULL;
 	
-	if(avformat_open_input(&self->pFormatCtx, self->infile, NULL, NULL) < 0){
+	if( !PyArg_ParseTuple( args, "s", &self->infile ) ){
+		err = 1;
+	}
+	
+	if( !err && avformat_open_input(&self->pFormatCtx, self->infile, NULL, NULL) < 0){
 		PyErr_SetString(FfmpegFileError, "could not open infile");
-		return NULL;
+		err = 2;
 	}
 	
-	if (avformat_find_stream_info(self->pFormatCtx, NULL) < 0) {
+	if( !err && avformat_find_stream_info(self->pFormatCtx, NULL) < 0) {
 		PyErr_SetString(FfmpegDecodeError, "could not find stream information");
-		return NULL;
+		err = 3;
 	}
 	
-	streamIdx = av_find_best_stream(self->pFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0);
-	if( streamIdx < 0 ){
-		PyErr_SetString(FfmpegDecodeError, "could not find an audio stream");
-		return NULL;
+	if( !err ){
+		streamIdx = av_find_best_stream(self->pFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0);
+		if( streamIdx < 0 ){
+			PyErr_SetString(FfmpegDecodeError, "could not find an audio stream");
+			err = 4;
+		}
 	}
-	self->pStream = self->pFormatCtx->streams[streamIdx];
-	self->pCodecCtx = self->pFormatCtx->streams[streamIdx]->codec;
 	
-	if( avcodec_open2(self->pCodecCtx, codec, NULL) < 0 ){
-		PyErr_SetString(FfmpegDecodeError, "could not open codec");
-		return NULL;
+	if( !err ){
+		self->pStream   = self->pFormatCtx->streams[streamIdx];
+		self->pCodecCtx = self->pFormatCtx->streams[streamIdx]->codec;
+		
+		if( avcodec_open2(self->pCodecCtx, codec, NULL) < 0 ){
+			PyErr_SetString(FfmpegDecodeError, "could not open codec");
+			err = 5;
+		}
+	}
+	
+	if( err > 2 ){
+		avformat_close_input(&self->pFormatCtx);
+	}
+	
+	if( err > 0 ){
+		type->tp_free( self );
+		self = NULL;
 	}
 	
 	return (PyObject *)self;
@@ -165,36 +184,33 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 	AVFrame *avfrm;
 	int got_frame;
 	int data_size;
-	PyObject* ret;
+	PyObject* ret = NULL;
 	
 	if( av_read_frame(self->pFormatCtx, &avpkt) < 0 ){
 		PyErr_SetString(PyExc_StopIteration, "no more frames to read");
 		return NULL;
 	}
 	
-	got_frame = 0;
-	avfrm = avcodec_alloc_frame();
-	avcodec_get_frame_defaults(avfrm);
-	if( avcodec_decode_audio4(self->pCodecCtx, avfrm, &got_frame, &avpkt) < 0 ){
-		PyErr_SetString(FfmpegDecodeError, "decoding failed");
+	if( (avfrm = avcodec_alloc_frame()) == NULL ){
+		PyErr_SetString(FfmpegDecodeError, "out of memory");
 		av_free_packet(&avpkt);
-		av_free(avfrm);
 		return NULL;
 	}
+	
+	got_frame = 0;
+	if( avcodec_decode_audio4(self->pCodecCtx, avfrm, &got_frame, &avpkt) < 0 || !got_frame ){
+		PyErr_SetString(FfmpegDecodeError, "decoding failed");
+	}
+	else{
+		data_size = av_samples_get_buffer_size(
+			NULL, self->pCodecCtx->channels, avfrm->nb_samples, self->pCodecCtx->sample_fmt, 1
+		);
+		ret = PyString_FromStringAndSize( (const char*)avfrm->data[0], data_size );
+	}
+	
 	av_free_packet(&avpkt);
-	
-	if (got_frame == 0) {
-		PyErr_SetString(FfmpegDecodeError, "codec didn't get a frame");
-		av_free(avfrm);
-		return NULL;
-	}
-	
-	data_size = av_samples_get_buffer_size(
-		NULL, self->pCodecCtx->channels, avfrm->nb_samples, self->pCodecCtx->sample_fmt, 1
-	);
-	
-	ret = PyString_FromStringAndSize( (const char*)avfrm->data[0], data_size );
 	av_free(avfrm);
+	
 	return ret;
 }
 
@@ -282,6 +298,7 @@ static PyObject* ffmpeg_resampler_new( PyTypeObject* type, PyObject* args, PyObj
 		&self->output_sample_format, &self->input_sample_format,
 		&self->filter_length, &self->log2_phase_count, &self->linear, &self->cutoff
 		) ){
+		type->tp_free( self );
 		return NULL;
 	}
 	
@@ -293,6 +310,7 @@ static PyObject* ffmpeg_resampler_new( PyTypeObject* type, PyObject* args, PyObj
 	
 	if( self->pResampleCtx == NULL ){
 		PyErr_SetString(FfmpegResampleError, "could not initialize resampler");
+		type->tp_free( self );
 		return NULL;
 	}
 	
@@ -310,7 +328,7 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	char* outbuf;
 	int outnb;  /* number of output frames */
 	int outlen; /* length of output buffer */
-	PyObject* ret;
+	PyObject* ret = NULL;
 	
 	if( !PyArg_ParseTuple( args, "s#", &inbuf, &inlen ) )
 		return NULL;
@@ -322,14 +340,16 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 		NULL, self->output_channels, outnb, self->output_sample_format, 1
 	);
 	
-	outbuf = malloc(sizeof(char) * outlen);
-	
-	if( audio_resample(self->pResampleCtx, (short *)outbuf, (short *)inbuf, innb) < 0 ){
-		PyErr_SetString(FfmpegResampleError, "resampling failed");
+	if( (outbuf = malloc(sizeof(char) * outlen)) == NULL ){
+		PyErr_SetString(FfmpegResampleError, "out of memory");
 		return NULL;
 	}
 	
-	ret = PyString_FromStringAndSize( outbuf, outlen );
+	if( audio_resample(self->pResampleCtx, (short *)outbuf, (short *)inbuf, innb) < 0 )
+		PyErr_SetString(FfmpegResampleError, "resampling failed");
+	else
+		ret = PyString_FromStringAndSize( outbuf, outlen );
+	
 	free(outbuf);
 	return ret;
 }
