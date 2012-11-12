@@ -387,22 +387,25 @@ static PyObject* ffmpeg_get_sample_fmt_name( PyObject* module, PyObject* args ){
 	if( !PyArg_ParseTuple( args, "i", &sample_fmt ) )
 		return NULL;
 	
-	fmt_name = av_get_sample_fmt_name(sample_fmt);
+	if( (fmt_name = av_get_sample_fmt_name(sample_fmt)) != NULL )
+		return PyString_FromString( fmt_name );
 	
-	if( fmt_name == NULL ){
-		PyErr_SetString(PyExc_KeyError, "Sample format not recognized");
-	}
-	
-	return PyString_FromString( fmt_name );
+	PyErr_SetString(PyExc_KeyError, "Sample format not recognized");
+	return NULL;
 }
 
 static PyObject* ffmpeg_get_bytes_per_sample( PyObject* module, PyObject* args ){
 	enum AVSampleFormat sample_fmt;
+	int bps;
 	
 	if( !PyArg_ParseTuple( args, "i", &sample_fmt ) )
 		return NULL;
 	
-	return PyInt_FromLong( av_get_bytes_per_sample(sample_fmt) );
+	if( bps = av_get_bytes_per_sample(sample_fmt) )
+		return PyInt_FromLong( av_get_bytes_per_sample(sample_fmt) );
+	
+	PyErr_SetString(PyExc_KeyError, "Sample format not recognized");
+	return NULL;
 }
 
 static PyMethodDef ffmpegmodule_Methods[] = {
