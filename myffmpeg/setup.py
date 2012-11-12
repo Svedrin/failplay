@@ -30,15 +30,29 @@
 
 from distutils.core import setup, Extension
 
-fismodule = Extension(
+ffmpegmodule = Extension(
 	'_ffmpeg',
 	sources   = ['ffmpegmodule.c'],
 	libraries = ["avcodec", "avformat"]
 	)
 
 setup(
-	name = 'PyFfmpeg',
+	name = 'myffmpeg',
 	version = '1.0',
 	description = 'Python module that allows decoding and resampling of audio files',
-	ext_modules = [fismodule]
+	ext_modules = [ffmpegmodule],
+	py_modules  = ["ffmpeg"],
+	author="Michael Ziegler",
+	author_email='diese-addy@funzt-halt.net',
+	url='http://bitbucket.org/Svedrin/failplay/src/tip/myffmpeg',
+	download_url=('http://bitbucket.org/Svedrin/failplay/get/tip.tar.bz2'),
+	classifiers=[
+		'Development Status :: 5 - Production/Stable',
+		'Intended Audience :: Developers',
+		'License :: OSI Approved :: GNU General Public License (GPL)',
+		'Operating System :: OS Independent',
+		'Programming Language :: Python :: Implementation :: CPython',
+		'Topic :: Software Development :: Libraries :: Python Modules',
+		'Topic :: Multimedia :: Sound/Audio'],
 	)
+
