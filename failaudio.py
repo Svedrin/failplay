@@ -555,7 +555,7 @@ class Player(QtCore.QObject, threading.Thread):
                 else:
                     fac = max( (prev.duration - prev.pos), 0 ) / transtime
                     self.emit(Player.sig_position_trans, prev, self.source, fac)
-                    if len(prevdata) < len(srcdata):
+                    if len(prevdata) != len(srcdata):
                         # The last chunk may be too short, causing audioop some pain. Screw it, then.
                         self.pcm.play( audioop.mul( srcdata, 2, 1 - fac ) )
                     else:
