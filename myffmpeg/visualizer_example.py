@@ -54,7 +54,8 @@ class OglRenderer( object ):
         nbpoints = len(self.points)
 
         glColor3f( 0.9, 0.3, 0.2 )
-        glBegin( GL_POLYGON )
+        glLineWidth(3);
+        glBegin( GL_LINE_STRIP )
         glVertex2i( 0, 0 )
         glColor3f( 0.9, 0.3, 0.2 )
         for idx, pnt in enumerate(self.points[1:]):
