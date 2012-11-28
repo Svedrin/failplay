@@ -56,12 +56,10 @@ class OglRenderer( object ):
         glColor3f( 0.9, 0.3, 0.2 )
         glLineWidth(3);
         glBegin( GL_LINE_STRIP )
-        glVertex2i( 0, 0 )
         glColor3f( 0.9, 0.3, 0.2 )
         for idx, pnt in enumerate(self.points[1:]):
             glVertex2i( int(idx / float(nbpoints) * self.width), int(pnt * self.height) )
         glColor3f( 0.9, 0.3, 0.2 )
-        glVertex2i( self.width, 0 )
         glEnd()
 
         glutSwapBuffers()
