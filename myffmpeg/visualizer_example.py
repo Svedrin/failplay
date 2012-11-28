@@ -51,13 +51,13 @@ class OglRenderer( object ):
 
         glColor3f( 0.0, 0.0, 0.0 )
 
-        nbpoints = len(self.points)
+        nbpoints = len(self.points) - 1
 
         glColor3f( 0.9, 0.3, 0.2 )
         glLineWidth(3);
         glBegin( GL_LINE_STRIP )
         glColor3f( 0.9, 0.3, 0.2 )
-        for idx, pnt in enumerate(self.points[1:]):
+        for idx, pnt in enumerate(self.points):
             glVertex2i( int(idx / float(nbpoints) * self.width), int(pnt * self.height) )
         glColor3f( 0.9, 0.3, 0.2 )
         glEnd()
