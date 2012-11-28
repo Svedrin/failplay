@@ -91,7 +91,8 @@ class OglRenderer( object ):
         # http://stackoverflow.com/questions/604453/analyze-audio-using-fast-fourier-transform
 
         # Increasing the length of the input stream will yield a more detailed graph.
-        y = fft(mono[:64])
+        # Input is S16, so scale by 2**16 to get output coordinates in [0,1]
+        y = fft(mono[:64] / float(2**16))
         n = 64. #len(mono)
 
         # Calculate the frequencies according to the FFT coefficients. They aren't being displayed
@@ -99,10 +100,11 @@ class OglRenderer( object ):
         #freqstep = self.source.samplerate / n
         #freq    = array(range(n/2)) * freqstep
 
-        # Calculate the power as the absolute of the FFT coefficients scaled by 2**16 (arbitrarily).
-        power   = sqrt(abs(y[1:(n/2)]) / float(2**16))
-
-        self.points = power
+        # The first half of the output array contains the fourier coefficients for our frequencies,
+        # abs() calcs sqrt(i² + j²) to un-complex-numberfy them.
+        # the sqrt() call then makes the graph look a bit nicer, because changes at a lower volume
+        # make more of a difference than changes at higher volumes.
+        self.points = sqrt(abs(y[1:(n/2)]))
         self.display()
 
 
