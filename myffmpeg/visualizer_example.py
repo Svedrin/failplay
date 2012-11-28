@@ -9,7 +9,7 @@ pcm = ao.AudioDevice("pulse")
 
 rdr = ffmpeg.Decoder(sys.argv[-1])
 
-
+from numpy import sqrt
 from time import time
 from numpy import array
 import struct
@@ -100,7 +100,7 @@ class OglRenderer( object ):
         #freq    = array(range(n/2)) * freqstep
 
         # Calculate the power as the absolute of the FFT coefficients scaled by 2**16 (arbitrarily).
-        power   = (abs(y[1:(n/2)]) / float(2**16))# ** 2
+        power   = sqrt(abs(y[1:(n/2)]) / float(2**16))
 
         self.points = power
         self.display()
