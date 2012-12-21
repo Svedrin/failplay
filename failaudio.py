@@ -242,7 +242,7 @@ class Playlist(QtCore.QAbstractTableModel):
 
     def _remove(self, path):
         idx = self.playlist.index(path)
-        if idx == self.current:
+        if idx <= self.current:
             if self.current > 0:
                 self.current -= 1
             else:
