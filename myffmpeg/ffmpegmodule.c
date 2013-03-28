@@ -53,6 +53,13 @@ static PyObject *FfmpegResampleError;
 static PyObject *FfmpegFileError;
 
 
+// I'd really like this thing to support streams. I just don't know if it will ever
+// happen. Anyway, here's a coupl'a links on how this seems to work with libav:
+//
+// ffurl_open/close  → https://ffmpeg.org/doxygen/1.0/avio_8c-source.html#l00234
+// open_input_stream → https://ffmpeg.org/doxygen/1.0/ffserver_8c-source.html#l02138
+// http_connect      → https://ffmpeg.org/doxygen/1.0/http_8c-source.html#l00377
+
 /**
  * DECODER
  */
