@@ -122,6 +122,9 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.setWindowIcon(mkIcon())
 
+        self.invstatusbars = False
+        self.intransition  = False
+
     def handleMiscShortcut(self):
         """ Toggle repeat if currently playing track is selected, en/dequeue otherwise. """
         index = self.lstPlaylist.selectedIndexes()[0]
@@ -191,16 +194,32 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             )
 
     def status_update_normal(self, source):
-        self._status_update(self.pgbSongProgress, source)
-        self.pgbSongProgressPrev.setFormat("Idle")
-        self.pgbSongProgressPrev.setMaximum(100)
-        self.pgbSongProgressPrev.setValue(0)
-        self.sldCrossfade.setValue(100)
+        self.intransition  = False
+        if not self.invstatusbars:
+            self._status_update(self.pgbSongProgress, source)
+            self.pgbSongProgressPrev.setFormat("Idle")
+            self.pgbSongProgressPrev.setMaximum(100)
+            self.pgbSongProgressPrev.setValue(0)
+            self.sldCrossfade.setValue(100)
+        else:
+            self._status_update(self.pgbSongProgressPrev, source)
+            self.pgbSongProgress.setFormat("Idle")
+            self.pgbSongProgress.setMaximum(100)
+            self.pgbSongProgress.setValue(0)
+            self.sldCrossfade.setValue(0)
 
     def status_update_trans(self, prev, source, fac):
-        self._status_update(self.pgbSongProgress, source)
-        self._status_update(self.pgbSongProgressPrev, prev)
-        self.sldCrossfade.setValue((1 - fac) * 100)
+        if not self.intransition:
+            self.intransition  = True
+            self.invstatusbars = not self.invstatusbars
+        if not self.invstatusbars:
+            self._status_update(self.pgbSongProgress, source)
+            self._status_update(self.pgbSongProgressPrev, prev)
+            self.sldCrossfade.setValue((1 - fac) * 100)
+        else:
+            self._status_update(self.pgbSongProgressPrev, source)
+            self._status_update(self.pgbSongProgress, prev)
+            self.sldCrossfade.setValue(fac * 100)
 
 
 
