@@ -507,7 +507,8 @@ class Player(QtCore.QObject, threading.Thread):
         self.shutdown = True
 
     def run(self):
-        transtime = 6.0
+        transtime  = 6.0 # crossfade of 6 seconds...
+        transearly = 1.4 # that starts a bit early because many tracks have tons of silence at the end
         prev = None
         end_of_playlist = False
 
@@ -537,7 +538,7 @@ class Player(QtCore.QObject, threading.Thread):
                 self.pcm.play( srcdata )
                 self.emit(Player.sig_position_normal, self.source)
 
-                if self.source.duration - self.source.pos <= transtime and not end_of_playlist:
+                if self.source.duration - self.source.pos - transearly <= transtime and not end_of_playlist:
                     #print "Entering transition!"
                     prev = self.source
                     try:
@@ -563,11 +564,11 @@ class Player(QtCore.QObject, threading.Thread):
                     self.emit(Player.sig_position_normal, self.source)
                 except:
                     # some other error happened, just play the other stream in its correct volume
-                    fac = max( (prev.duration - prev.pos), 0 ) / transtime
+                    fac = max( (prev.duration - prev.pos - transearly), 0 ) / transtime
                     self.emit(Player.sig_position_trans, prev, self.source, fac)
                     self.pcm.play( audioop.mul( srcdata, 2, 1 - fac ) )
                 else:
-                    fac = max( (prev.duration - prev.pos), 0 ) / transtime
+                    fac = max( (prev.duration - prev.pos - transearly), 0 ) / transtime
                     self.emit(Player.sig_position_trans, prev, self.source, fac)
                     if len(prevdata) != len(srcdata):
                         # The last chunk may be too short, causing audioop some pain. Screw it, then.
