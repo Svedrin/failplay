@@ -219,7 +219,7 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 			// planar data. read all the streams and return their data as a tuple.
 			ret = PyTuple_New(self->pCodecCtx->channels);
 			for( i = 0; i < self->pCodecCtx->channels; i++ ){
-				PyTuple_SetItem(ret, i, PyString_FromStringAndSize( (const char*)avfrm->extended_data[i], data_size ));
+				PyTuple_SetItem(ret, i, PyString_FromStringAndSize( (const char*)avfrm->extended_data[i], data_size / self->pCodecCtx->channels ));
 			}
 		}
 		else{
