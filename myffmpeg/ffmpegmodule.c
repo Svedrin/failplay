@@ -61,6 +61,12 @@ static PyObject *FfmpegFileError;
 // http_connect      → https://ffmpeg.org/doxygen/1.0/http_8c-source.html#l00377
 
 /**
+ * HACK UNTIL DEBIAN UPDATES LIBAV
+ */
+
+#define av_sample_format_is_planar(fmt) ((fmt) >= AV_SAMPLE_FMT_U8P && (fmt) <= AV_SAMPLE_FMT_DBLP)
+
+/**
  * DECODER
  */
 
@@ -215,7 +221,7 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 		data_size = av_samples_get_buffer_size(
 			NULL, self->pCodecCtx->channels, avfrm->nb_samples, self->pCodecCtx->sample_fmt, 1
 		);
-		if( self->pCodecCtx->sample_fmt >= AV_SAMPLE_FMT_U8P && self->pCodecCtx->sample_fmt <= AV_SAMPLE_FMT_DBLP ){
+		if( av_sample_format_is_planar(self->pCodecCtx->sample_fmt) ){
 			// planar data. read all the streams and return their data as a tuple.
 			ret = PyTuple_New(self->pCodecCtx->channels);
 			for( i = 0; i < self->pCodecCtx->channels; i++ ){
