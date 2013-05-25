@@ -229,7 +229,8 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 			}
 		}
 		else{
-			ret = PyString_FromStringAndSize( (const char*)avfrm->data[0], data_size );
+			ret = PyTuple_New(1);
+			PyTuple_SetItem(ret, 0, PyString_FromStringAndSize( (const char*)avfrm->data[0], data_size ));
 		}
 	}
 	
