@@ -24,7 +24,7 @@ from PyQt4 import QtCore
 
 import audioop
 import ao
-from myffmpeg.ffmpeg import Decoder, Resampler
+from myffmpeg.ffmpeg import Decoder
 import threading
 
 from ConfigParser import ConfigParser
@@ -40,10 +40,6 @@ class Source(QtCore.QObject):
         self.gen   = None
         self.title = path.rsplit( '/', 1 )[1].rsplit('.', 1)[0]
         self.fd.dump_format()
-        if self.fd.samplerate != 44100:
-            self.resampler = Resampler( output_rate=44100, input_rate=self.fd.samplerate )
-        else:
-            self.resampler = None
 
     def start(self):
         self.emit( Source.sig_start, self.path )
@@ -62,10 +58,7 @@ class Source(QtCore.QObject):
     @property
     def _data(self):
         for chunk in self.fd.read():
-            if self.resampler is None:
-                yield chunk
-            else:
-                yield self.resampler.resample(chunk)
+            yield chunk[0]
         raise StopIteration
 
     @property
