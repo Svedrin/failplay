@@ -22,6 +22,7 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libswresample/swresample.h>
 
 #define MODULE_DOCSTRING "Python Module that decodes audio using FFmpeg's lavc."
 #define DECODER_DOCSTRING ""\
@@ -39,7 +40,9 @@
 #define RESAMPLER_DOCSTRING ""\
 	"This class handles resampling audio frames.\n"\
 	"\n"\
-	"   Resampler(output_rate, input_rate, output_channels=2, input_channels=2,\n"\
+	"   Resampler(output_rate, input_rate, \n"\
+	"             output_channel_layout=AV_CH_LAYOUT_STEREO, \n"\
+	"             input_channel_layout=AV_CH_LAYOUT_STEREO, \n"\
 	"             output_sample_format=AV_SAMPLE_FMT_S16, \n"\
 	"             input_sample_format=AV_SAMPLE_FMT_S16, \n"\
 	"             filter_length=16, log2_phase_count=10, \n"\
@@ -278,26 +281,21 @@ static PyTypeObject ffmpegDecoder = {
 
 typedef struct {
 	PyObject_HEAD
-	ReSampleContext *pResampleCtx;
+	SwrContext *pSwrCtx;
 	int output_rate;
 	int input_rate;
-	int output_channels;
-	int input_channels;
+	int output_channel_layout;
+	int input_channel_layout;
 	enum AVSampleFormat output_sample_format;
 	enum AVSampleFormat input_sample_format;
-	int filter_length;
-	int log2_phase_count;
-	int linear;
-	double cutoff;
 } ffmpegResamplerObject;
 
 static PyObject* ffmpeg_resampler_new( PyTypeObject* type, PyObject* args, PyObject* kw ){
 	ffmpegResamplerObject* self;
 	
 	static char *kwlist[] = {
-		"output_rate", "input_rate", "output_channels", "input_channels",
+		"output_rate", "input_rate", "output_channel_layout", "input_channel_layout",
 		"output_sample_format", "input_sample_format",
-		"filter_length", "log2_phase_count", "linear", "cutoff",
 		NULL};
 	
 	self = (ffmpegResamplerObject *) type->tp_alloc( type, 0 );
@@ -307,76 +305,89 @@ static PyObject* ffmpeg_resampler_new( PyTypeObject* type, PyObject* args, PyObj
 	
 	self->output_rate = 0;
 	self->input_rate  = 0;
-	self->output_channels = 2;
-	self->input_channels  = 2;
+	self->output_channel_layout = AV_CH_LAYOUT_STEREO;
+	self->input_channel_layout  = AV_CH_LAYOUT_STEREO;
 	self->output_sample_format = AV_SAMPLE_FMT_S16;
 	self->input_sample_format  = AV_SAMPLE_FMT_S16;
-	/* The following defaults are blindly copied from
-	 * http://stackoverflow.com/questions/5501357/the-problem-with-ffmpeg-on-android
-	 */
-	self->filter_length = 16;
-	self->log2_phase_count = 10;
-	self->linear = 0;
-	self->cutoff = 1;
 	
-	if( !PyArg_ParseTupleAndKeywords( args, kw, "ii|iiiiiiid", kwlist,
-		&self->output_rate, &self->input_rate, &self->output_channels, &self->input_channels,
-		&self->output_sample_format, &self->input_sample_format,
-		&self->filter_length, &self->log2_phase_count, &self->linear, &self->cutoff
+	if( !PyArg_ParseTupleAndKeywords( args, kw, "ii|iiii", kwlist,
+		&self->output_rate,           &self->input_rate,
+		&self->output_channel_layout, &self->input_channel_layout,
+		&self->output_sample_format,  &self->input_sample_format
 		) ){
 		type->tp_free( self );
 		return NULL;
 	}
 	
-	self->pResampleCtx = av_audio_resample_init(
-		self->output_channels, self->input_channels,
-		self->output_rate, self->input_rate,
-		self->output_sample_format, self->input_sample_format,
-		self->filter_length, self->log2_phase_count, self->linear, self->cutoff);
+	self->pSwrCtx = swr_alloc_set_opts(NULL,
+		self->output_channel_layout, self->output_sample_format, self->output_rate,
+		self->input_channel_layout,  self->input_sample_format,  self->input_rate,
+		0, NULL
+	);
 	
-	if( self->pResampleCtx == NULL ){
+	if( self->pSwrCtx == NULL ){
 		PyErr_SetString(FfmpegResampleError, "could not initialize resampler");
 		type->tp_free( self );
 		return NULL;
 	}
 	
+	swr_init(self->pSwrCtx);
+	
 	return (PyObject *)self;
 }
 
 static void ffmpeg_resampler_dealloc( ffmpegResamplerObject* self ){
-	audio_resample_close(self->pResampleCtx);
+	swr_free(&self->pSwrCtx);
 }
 
 static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObject* args ){
-	const char* inbuf;
-	int innb;   /* number of input frames */
-	int inlen;  /* length of input buffer */
-	char* outbuf;
-	int outnb;  /* number of output frames */
-	int outlen; /* length of output buffer */
+	const char** indata = NULL;
+	int i;
+	int innb;
+	int inlen;
+	int inplanes;
+	uint8_t *outbuf[10];
+	int outnb;
+	int outlen;
+	PyObject* in  = NULL;
 	PyObject* ret = NULL;
 	
-	if( !PyArg_ParseTuple( args, "s#", &inbuf, &inlen ) )
+	if( !PyArg_ParseTuple( args, "O!", &PyTuple_Type, &in ) )
 		return NULL;
 	
-	innb  = inlen / self->input_channels / av_get_bytes_per_sample(self->input_sample_format);
+	inplanes = PyTuple_Size(in);
 	
-	outnb  = (int)(innb * (float)self->output_rate / (float)self->input_rate);
+	indata = malloc( sizeof(const char*) * inplanes );
+	for( i = 0; i < inplanes; i++ ){
+		indata[i] = PyString_AsString(PyTuple_GetItem(in, i));
+	}
+	
+	inlen = PyString_Size(PyTuple_GetItem(in, 0));
+	innb  = inlen / av_get_bytes_per_sample(self->input_sample_format);
+	
+	outnb  = av_rescale_rnd(innb + swr_get_delay(self->pSwrCtx, self->input_rate),
+				self->output_rate, self->input_rate, AV_ROUND_UP);
+	
 	outlen = av_samples_get_buffer_size(
-		NULL, self->output_channels, outnb, self->output_sample_format, 1
+		NULL, av_get_channel_layout_nb_channels(self->output_channel_layout),
+		outnb, self->output_sample_format, 1
 	);
 	
-	if( (outbuf = malloc(sizeof(char) * outlen)) == NULL ){
+	// this should be av_samples_alloc_array_and_samples(&outbuf, ...).
+	if( av_samples_alloc(outbuf, NULL,
+		av_get_channel_layout_nb_channels(self->output_channel_layout),
+		outnb, self->output_sample_format, 0) < 0 ){
 		PyErr_SetString(FfmpegResampleError, "out of memory");
 		return NULL;
 	}
 	
-	if( audio_resample(self->pResampleCtx, (short *)outbuf, (short *)inbuf, innb) < 0 )
+	if( swr_convert(self->pSwrCtx, outbuf, outnb, (const uint8_t **)indata, innb) < 0 )
 		PyErr_SetString(FfmpegResampleError, "resampling failed");
 	else
-		ret = PyString_FromStringAndSize( outbuf, outlen );
+		ret = PyString_FromStringAndSize( (const char*)outbuf[0], outlen );
 	
-	free(outbuf);
+	free(indata);
+	free(outbuf[0]);
 	return ret;
 }
 
