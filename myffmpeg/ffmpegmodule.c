@@ -205,6 +205,8 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 		return NULL;
 	}
 	
+	avcodec_get_frame_defaults(avfrm);
+	
 	got_frame = 0;
 	if( avcodec_decode_audio4(self->pCodecCtx, avfrm, &got_frame, &avpkt) < 0 || !got_frame ){
 		PyErr_SetString(FfmpegDecodeError, "decoding failed");
