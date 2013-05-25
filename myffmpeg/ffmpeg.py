@@ -21,12 +21,18 @@ from _ffmpeg import Decoder as LowLevelDecoder, Resampler, \
                     get_bytes_per_sample, get_sample_fmt_name, \
                     AVCODEC_MAX_AUDIO_FRAME_SIZE, \
                     AV_SAMPLE_FMT_NONE, \
-                    AV_SAMPLE_FMT_DBL, \
-                    AV_SAMPLE_FMT_U8, \
-                    AV_SAMPLE_FMT_FLT, \
-                    AV_SAMPLE_FMT_NB, \
+                    AV_SAMPLE_FMT_U8,  \
                     AV_SAMPLE_FMT_S16, \
-                    AV_SAMPLE_FMT_S32
+                    AV_SAMPLE_FMT_S32, \
+                    AV_SAMPLE_FMT_FLT, \
+                    AV_SAMPLE_FMT_DBL, \
+                    AV_SAMPLE_FMT_U8P,  \
+                    AV_SAMPLE_FMT_S16P, \
+                    AV_SAMPLE_FMT_S32P, \
+                    AV_SAMPLE_FMT_FLTP, \
+                    AV_SAMPLE_FMT_DBLP, \
+                    AV_SAMPLE_FMT_NB
+
 
 class Decoder(object):
     """ Python wrapper around the low level C module decoder.
@@ -49,10 +55,16 @@ class Decoder(object):
         the amount of bytes already retrieved using the read() method.
     """
 
-    def __init__(self, fpath):
+    def __init__(self, fpath, want_samplerate=44100, want_samplefmt=AV_SAMPLE_FMT_S16):
         self._decoder = LowLevelDecoder(fpath)
-        self._buffer  = ""
+        self._buffer  = [""] * (self.channels if self.is_planar else 1)
         self._readbytes = 0
+
+        if self.samplerate != want_samplerate or self.samplefmt != want_samplefmt:
+            self.resampler = Resampler( output_rate=want_samplerate, input_rate=self.samplerate,
+                output_sample_format=want_samplefmt, input_sample_format=self.samplefmt )
+        else:
+            self.resampler = None
 
     channels   = property( lambda self: self._decoder.get_channels(),   doc="The number of channels in the input stream." )
     bitrate    = property( lambda self: self._decoder.get_bitrate(),    doc="The bitrate of the input channels." )
@@ -64,6 +76,10 @@ class Decoder(object):
     samplefmt  = property( lambda self: self._decoder.get_samplefmt(),  doc="The sample format of the input stream." )
 
     @property
+    def is_planar(self):
+        return self.samplefmt in (AV_SAMPLE_FMT_U8P, AV_SAMPLE_FMT_S16P, AV_SAMPLE_FMT_S32P, AV_SAMPLE_FMT_FLTP, AV_SAMPLE_FMT_DBLP)
+
+    @property
     def position(self):
         """ The player's position in the file in seconds. """
         return self._readbytes / float(self.samplerate * self.channels * get_bytes_per_sample(self.samplefmt))
@@ -71,12 +87,15 @@ class Decoder(object):
     def read(self, bytes=4096):
         """ Get chunks of exactly ``bytes`` length. """
         while True:
-            while len(self._buffer) < bytes:
+            while len(self._buffer[0]) < bytes:
                 try:
                     data = self._decoder.read()
                 except StopIteration:
                     if self._buffer:
-                        yield self._buffer
+                        if self.resampler is None:
+                            yield tuple(self._buffer)
+                        else:
+                            yield self.resampler.resample(tuple(self._buffer))
                     raise StopIteration
                 except DecodeError, err:
                     # Ignore DecodeErrors at the very beginning of the file
@@ -85,12 +104,19 @@ class Decoder(object):
                     else:
                         print "Ignoring DecodeError %s in file %s" % (err.message, self.path)
                 else:
-                    self._buffer += data
-                    self._readbytes += len(data)
+                    for idx, channeldata in enumerate(data):
+                        self._buffer[idx] += channeldata
+                        self._readbytes += len(channeldata)
 
-            ret = self._buffer[:bytes]
-            self._buffer = self._buffer[bytes:]
-            yield ret
+            ret = []
+            for idx, channeldata in enumerate(self._buffer):
+                ret.append(channeldata[:bytes])
+                self._buffer[idx] = channeldata[bytes:]
+
+            if self.resampler is None:
+                yield tuple(ret)
+            else:
+                yield self.resampler.resample(tuple(ret))
 
     def dump_format(self):
         """ Dump input file format information to stdout. """
