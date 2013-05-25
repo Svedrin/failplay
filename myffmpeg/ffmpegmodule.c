@@ -373,7 +373,7 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 		outnb, self->output_sample_format, 1
 	);
 	
-	// this should be av_samples_alloc_array_and_samples(&outbuf, ...).
+	// TODO this should be av_samples_alloc_array_and_samples(&outbuf, ...).
 	if( av_samples_alloc(outbuf, NULL,
 		av_get_channel_layout_nb_channels(self->output_channel_layout),
 		outnb, self->output_sample_format, 0) < 0 ){
@@ -383,8 +383,11 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	
 	if( swr_convert(self->pSwrCtx, outbuf, outnb, (const uint8_t **)indata, innb) < 0 )
 		PyErr_SetString(FfmpegResampleError, "resampling failed");
-	else
-		ret = PyString_FromStringAndSize( (const char*)outbuf[0], outlen );
+	else{
+		// TODO this whole thing should be able to handle planar output formats
+		ret = PyTuple_New(1);
+		PyTuple_SetItem(ret, 0, PyString_FromStringAndSize( (const char*)outbuf[0], outlen ));
+	}
 	
 	free(indata);
 	free(outbuf[0]);
