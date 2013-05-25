@@ -12,4 +12,4 @@ pcm = ao.AudioDevice("pulse")
 rdr = ffmpeg.Decoder(sys.argv[-1])
 
 for chunk in rdr.read():
-    pcm.play( chunk )
+    pcm.play( chunk[0] )
