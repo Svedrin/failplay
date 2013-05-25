@@ -191,6 +191,7 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 	AVFrame *avfrm;
 	int got_frame;
 	int data_size;
+	int i;
 	PyObject* ret = NULL;
 	
 	if( av_read_frame(self->pFormatCtx, &avpkt) < 0 ){
@@ -212,7 +213,16 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 		data_size = av_samples_get_buffer_size(
 			NULL, self->pCodecCtx->channels, avfrm->nb_samples, self->pCodecCtx->sample_fmt, 1
 		);
-		ret = PyString_FromStringAndSize( (const char*)avfrm->data[0], data_size );
+		if( self->pCodecCtx->sample_fmt >= AV_SAMPLE_FMT_U8P && self->pCodecCtx->sample_fmt <= AV_SAMPLE_FMT_DBLP ){
+			// planar data. read all the streams and return their data as a tuple.
+			ret = PyTuple_New(self->pCodecCtx->channels);
+			for( i = 0; i < self->pCodecCtx->channels; i++ ){
+				PyTuple_SetItem(ret, i, PyString_FromStringAndSize( (const char*)avfrm->extended_data[i], data_size ));
+			}
+		}
+		else{
+			ret = PyString_FromStringAndSize( (const char*)avfrm->data[0], data_size );
+		}
 	}
 	
 	av_free_packet(&avpkt);
