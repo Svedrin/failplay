@@ -19,7 +19,6 @@
 from _ffmpeg import Decoder as LowLevelDecoder, Resampler, \
                     DecodeError, FileError, ResampleError, \
                     get_bytes_per_sample, get_sample_fmt_name, \
-                    AVCODEC_MAX_AUDIO_FRAME_SIZE, \
                     AV_SAMPLE_FMT_NONE, \
                     AV_SAMPLE_FMT_U8,  \
                     AV_SAMPLE_FMT_S16, \

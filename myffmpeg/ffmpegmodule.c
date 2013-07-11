@@ -500,7 +500,6 @@ PyMODINIT_FUNC init_ffmpeg(void){
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_FLTP );
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_DBLP );
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_NB   );
-	PyModule_AddIntMacro( module, AVCODEC_MAX_AUDIO_FRAME_SIZE );
 	
 	avcodec_register_all();
 	av_register_all();
