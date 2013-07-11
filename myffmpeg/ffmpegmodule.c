@@ -346,7 +346,7 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	int innb;
 	int inlen;
 	int inplanes;
-	uint8_t *outbuf[10];
+	uint8_t **outbuf;
 	int outnb;
 	int outlen;
 	PyObject* in  = NULL;
@@ -373,8 +373,7 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 		outnb, self->output_sample_format, 1
 	);
 	
-	// TODO this should be av_samples_alloc_array_and_samples(&outbuf, ...).
-	if( av_samples_alloc(outbuf, NULL,
+	if( av_samples_alloc_array_and_samples(&outbuf, NULL,
 		av_get_channel_layout_nb_channels(self->output_channel_layout),
 		outnb, self->output_sample_format, 0) < 0 ){
 		PyErr_SetString(FfmpegResampleError, "out of memory");
