@@ -126,7 +126,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         """ Toggle repeat if currently playing track is doubleclicked, en/dequeue otherwise. """
         if index.row() == self.playlist.current:
             return self.repeatCurrent()
-        return self.toggleQueue(index)
+        self.playlist.toggleQueue( self.playlist[index] )
 
     def onSpacePressed(self):
         """ Toggle repeat if currently playing track or none is selected, en/dequeue otherwise. """
@@ -167,9 +167,6 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
     def append(self, index):
         self.playlist.append( self.library.filePath(index).toLocal8Bit().data() )
-
-    def toggleQueue(self, index):
-        self.playlist.toggleQueue( self.playlist[index] )
 
     def onRemoveTriggered(self):
         index = self.lstPlaylist.selectedIndexes()[0]
