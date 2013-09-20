@@ -70,7 +70,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.connect( self.playlist,    Playlist.sig_datachg, self.onPlaylistChanged )
         self.connect( self.leLibraryFilter, QtCore.SIGNAL("textEdited(QString)"), self.onFilterEdited )
-        self.connect( self.lstLibrary,  QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.append )
+        self.connect( self.lstLibrary,  QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.onLibraryDoubleClicked )
 
         self.connect( self.lstPlaylist, QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.onPlaylistDoubleClicked )
 
@@ -165,7 +165,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def onPlayerStarted(self):
         self.lstPlaylist.scrollTo( self.playlist.index( self.playlist.current ), QtGui.QAbstractItemView.PositionAtCenter )
 
-    def append(self, index):
+    def onLibraryDoubleClicked(self, index):
         self.playlist.append( self.library.filePath(index).toLocal8Bit().data() )
 
     def onRemoveTriggered(self):
