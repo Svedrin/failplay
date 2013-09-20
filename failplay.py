@@ -68,7 +68,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.lstLibrary.hideColumn(2)
         self.lstLibrary.hideColumn(3)
 
-        self.connect( self.playlist,    Playlist.sig_datachg, self.updatePlaylist )
+        self.connect( self.playlist,    Playlist.sig_datachg, self.onPlaylistChanged )
         self.connect( self.leLibraryFilter, QtCore.SIGNAL("textEdited(QString)"), self.onFilterEdited )
         self.connect( self.lstLibrary,  QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.append )
 
@@ -150,7 +150,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         """ Toggle stopAfter for the currently playing track. """
         self.playlist.toggleStopAfter( self.playlist[ self.playlist.current ] )
 
-    def updatePlaylist(self, topleft, btright):
+    def onPlaylistChanged(self, topleft, btright):
         self.lstPlaylist.reset()
 
     def onFilterEdited(self, text):
