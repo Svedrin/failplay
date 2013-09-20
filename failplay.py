@@ -121,6 +121,9 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.invstatusbars = False
         self.intransition  = False
 
+    def start(self):
+        self.player.start()
+
     def onPlaylistDoubleClicked(self, index):
         """ Toggle repeat if currently playing track is doubleclicked, en/dequeue otherwise. """
         if index.row() == self.playlist.current:
@@ -157,9 +160,6 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             self.library.setNameFilters(["*" + text + "*"])
         else:
             self.library.setNameFilters([])
-
-    def start(self):
-        self.player.start()
 
     def onPlayerStarted(self):
         self.lstPlaylist.scrollTo( self.playlist.index( self.playlist.current ), QtGui.QAbstractItemView.PositionAtCenter )
