@@ -121,6 +121,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.invstatusbars = False
         self.intransition  = False
+        self.selection     = None
 
     def start(self):
         self.player.start()
@@ -131,6 +132,18 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             return self.lstPlaylist.selectedIndexes()[0]
         return self.playlist.current_index
 
+    def save_selection(self):
+        if self.lstPlaylist.selectedIndexes():
+            self.selection = self.lstPlaylist.selectedIndexes()[0]
+        else:
+            self.selection = None
+
+    def restore_selection(self):
+        if self.selection is not None:
+            self.lstPlaylist.selectRow(self.selection.row())
+        else:
+            self.lstPlaylist.clearSelection()
+
     def onPlaylistDoubleClicked(self, index):
         """ Toggle repeat if currently playing track is doubleclicked, en/dequeue otherwise. """
         if index.row() == self.playlist.current:
@@ -139,11 +152,15 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
     def onSpacePressed(self):
         """ Toggle repeat if currently playing track or none is selected, en/dequeue otherwise. """
+        self.save_selection()
         self.onPlaylistDoubleClicked(self._selected_or_current_index)
+        self.restore_selection()
 
     def onEndPressed(self):
         """ Toggle stopAfter on the selected track or the current one if none is selected. """
+        self.save_selection()
         self.playlist.toggleStopAfter( self.playlist[self._selected_or_current_index] )
+        self.restore_selection()
 
     def onEscPressed(self):
         self.lstPlaylist.clearSelection()
