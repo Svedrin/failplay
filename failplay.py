@@ -68,11 +68,10 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.lstLibrary.hideColumn(2)
         self.lstLibrary.hideColumn(3)
 
-        self.connect( self.playlist,    Playlist.sig_datachg, self.onPlaylistChanged )
-        self.connect( self.leLibraryFilter, QtCore.SIGNAL("textEdited(QString)"), self.onFilterEdited )
-        self.connect( self.lstLibrary,  QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.onLibraryDoubleClicked )
-
-        self.connect( self.lstPlaylist, QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.onPlaylistDoubleClicked )
+        self.connect( self.playlist,        Playlist.sig_datachg,                        self.onPlaylistChanged       )
+        self.connect( self.leLibraryFilter, QtCore.SIGNAL("textEdited(QString)"),        self.onFilterEdited          )
+        self.connect( self.lstLibrary,      QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.onLibraryDoubleClicked  )
+        self.connect( self.lstPlaylist,     QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.onPlaylistDoubleClicked )
 
         self.playlist.currentBg = QtGui.QBrush(Qt.Qt.cyan, Qt.Qt.SolidPattern)
         self.lstPlaylist.setModel(self.playlist)
