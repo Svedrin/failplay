@@ -54,7 +54,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.setupUi(self)
 
-        self.connect( self.player, Player.sig_started, self.started )
+        self.connect( self.player, Player.sig_started, self.onPlayerStarted )
         self.connect( self.player, Player.sig_stopped, self.close )
 
         self.connect( self.player, Player.sig_position_normal, self.status_update_normal )
@@ -162,7 +162,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def start(self):
         self.player.start()
 
-    def started(self):
+    def onPlayerStarted(self):
         self.lstPlaylist.scrollTo( self.playlist.index( self.playlist.current ), QtGui.QAbstractItemView.PositionAtCenter )
 
     def append(self, index):
