@@ -112,9 +112,10 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             self.connect( shortcut, QtCore.SIGNAL("activated()"), callback )
             return shortcut
 
-        self.shortcutSpace   = mkShortcut(Qt.Qt.Key_Space, self.onSpacePressed)
-        self.shortcutEnd     = mkShortcut(Qt.Qt.Key_End,   self.onEndPressed)
-        self.shortcutQuit    = mkShortcut(Qt.Qt.Key_Q,     self.close)
+        self.shortcutSpace   = mkShortcut(Qt.Qt.Key_Space,  self.onSpacePressed)
+        self.shortcutEnd     = mkShortcut(Qt.Qt.Key_End,    self.onEndPressed)
+        self.shortcutEsc     = mkShortcut(Qt.Qt.Key_Escape, self.onEscPressed)
+        self.shortcutQuit    = mkShortcut(Qt.Qt.Key_Q,      self.close)
 
         self.setWindowIcon(mkIcon())
 
@@ -143,6 +144,9 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def onEndPressed(self):
         """ Toggle stopAfter on the selected track or the current one if none is selected. """
         self.playlist.toggleStopAfter( self.playlist[self._selected_or_current_index] )
+
+    def onEscPressed(self):
+        self.lstPlaylist.clearSelection()
 
     def onPlaylistChanged(self, topleft, btright):
         self.lstPlaylist.reset()
