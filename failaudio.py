@@ -203,6 +203,10 @@ class Playlist(QtCore.QAbstractTableModel):
         return nextpath
 
     @property
+    def current_index(self):
+        return self.index(self.current, 0)
+
+    @property
     def dirty(self):
         """ True if there are unsaved changes. """
         return self.playlist_dirty or self.jmpqueue_dirty

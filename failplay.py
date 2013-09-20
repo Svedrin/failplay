@@ -124,30 +124,25 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def start(self):
         self.player.start()
 
+    @property
+    def _selected_or_current_index(self):
+        if self.lstPlaylist.selectedIndexes():
+            return self.lstPlaylist.selectedIndexes()[0]
+        return self.playlist.current_index
+
     def onPlaylistDoubleClicked(self, index):
         """ Toggle repeat if currently playing track is doubleclicked, en/dequeue otherwise. """
         if index.row() == self.playlist.current:
-            return self.repeatCurrent()
+            return self.playlist.toggleRepeat( self.playlist[ self.playlist.current ] )
         self.playlist.toggleQueue( self.playlist[index] )
 
     def onSpacePressed(self):
         """ Toggle repeat if currently playing track or none is selected, en/dequeue otherwise. """
-        if self.lstPlaylist.selectedIndexes():
-            self.onPlaylistDoubleClicked(self.lstPlaylist.selectedIndexes()[0])
-        else:
-            self.repeatCurrent()
+        self.onPlaylistDoubleClicked(self._selected_or_current_index)
 
     def onEndPressed(self):
         """ Toggle stopAfter on the selected track or the current one if none is selected. """
-        if self.lstPlaylist.selectedIndexes():
-            index = self.lstPlaylist.selectedIndexes()[0]
-        else:
-            index = self.playlist.current
-        self.playlist.toggleStopAfter( self.playlist[index] )
-
-    def repeatCurrent(self):
-        """ Toggle repeat for the currently playing track. """
-        self.playlist.toggleRepeat( self.playlist[ self.playlist.current ] )
+        self.playlist.toggleStopAfter( self.playlist[self._selected_or_current_index] )
 
     def onPlaylistChanged(self, topleft, btright):
         self.lstPlaylist.reset()
