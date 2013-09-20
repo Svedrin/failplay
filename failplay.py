@@ -140,17 +140,14 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def onEndPressed(self):
         """ Toggle stopAfter on the selected track or the current one if none is selected. """
         if self.lstPlaylist.selectedIndexes():
-            self.playlist.toggleStopAfter( self.playlist[self.lstPlaylist.selectedIndexes()[0]] )
+            index = self.lstPlaylist.selectedIndexes()[0]
         else:
-            self.stopAfterCurrent()
+            index = self.playlist.current
+        self.playlist.toggleStopAfter( self.playlist[index] )
 
     def repeatCurrent(self):
         """ Toggle repeat for the currently playing track. """
         self.playlist.toggleRepeat( self.playlist[ self.playlist.current ] )
-
-    def stopAfterCurrent(self):
-        """ Toggle stopAfter for the currently playing track. """
-        self.playlist.toggleStopAfter( self.playlist[ self.playlist.current ] )
 
     def onPlaylistChanged(self, topleft, btright):
         self.lstPlaylist.reset()
