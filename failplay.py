@@ -85,28 +85,26 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         # build playlist context menu
         self.actRemove = QtGui.QAction("Remove", self.lstPlaylist)
-        self.connect( self.actRemove, QtCore.SIGNAL("triggered(bool)"), self.remove)
+        self.connect( self.actRemove, QtCore.SIGNAL("triggered(bool)"), self.onRemoveTriggered)
         self.actRemove.setShortcut(Qt.Qt.Key_Delete)
         self.lstPlaylist.insertAction(None, self.actRemove)
 
         self.actEnqueue = QtGui.QAction("Enqueue", self.lstPlaylist)
-        self.connect( self.actEnqueue, QtCore.SIGNAL("triggered(bool)"), self.enqueue)
+        self.connect( self.actEnqueue, QtCore.SIGNAL("triggered(bool)"), self.onEnqueueTriggered)
         self.actEnqueue.setShortcut(Qt.Qt.Key_Plus)
         self.lstPlaylist.insertAction(None, self.actEnqueue)
 
         self.actDequeue = QtGui.QAction("Dequeue", self.lstPlaylist)
-        self.connect( self.actDequeue, QtCore.SIGNAL("triggered(bool)"), self.dequeue)
+        self.connect( self.actDequeue, QtCore.SIGNAL("triggered(bool)"), self.onDequeueTriggered)
         self.actDequeue.setShortcut(Qt.Qt.Key_Minus)
         self.lstPlaylist.insertAction(None, self.actDequeue)
 
         self.actRepeat = QtGui.QAction("Repeat", self.lstPlaylist)
-        self.connect( self.actRepeat, QtCore.SIGNAL("triggered(bool)"), self.repeat)
-        self.actRepeat.setShortcut(Qt.Qt.Key_R)
+        self.connect( self.actRepeat, QtCore.SIGNAL("triggered(bool)"), self.onRepeatTriggered)
         self.lstPlaylist.insertAction(None, self.actRepeat)
 
         self.actStopAfter = QtGui.QAction("Stop after this track", self.lstPlaylist)
-        self.connect( self.actStopAfter, QtCore.SIGNAL("triggered(bool)"), self.stopafter)
-        self.actStopAfter.setShortcut(Qt.Qt.Key_S)
+        self.connect( self.actStopAfter, QtCore.SIGNAL("triggered(bool)"), self.onStopAfterTriggered)
         self.lstPlaylist.insertAction(None, self.actStopAfter)
 
         def mkShortcut(key, callback):
@@ -173,23 +171,23 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def toggleQueue(self, index):
         self.playlist.toggleQueue( self.playlist[index] )
 
-    def remove(self):
+    def onRemoveTriggered(self):
         index = self.lstPlaylist.selectedIndexes()[0]
         self.playlist.remove( self.playlist[index] )
 
-    def enqueue(self):
+    def onEnqueueTriggered(self):
         index = self.lstPlaylist.selectedIndexes()[0]
         self.playlist.enqueue( self.playlist[index] )
 
-    def dequeue(self):
+    def onDequeueTriggered(self):
         index = self.lstPlaylist.selectedIndexes()[0]
         self.playlist.dequeue( self.playlist[index] )
 
-    def repeat(self):
+    def onRepeatTriggered(self):
         index = self.lstPlaylist.selectedIndexes()[0]
         self.playlist.toggleRepeat( self.playlist[index] )
 
-    def stopafter(self):
+    def onStopAfterTriggered(self):
         index = self.lstPlaylist.selectedIndexes()[0]
         self.playlist.toggleStopAfter( self.playlist[index] )
 
