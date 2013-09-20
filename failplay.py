@@ -116,7 +116,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             return shortcut
 
         self.shortcutSpace   = mkShortcut(Qt.Qt.Key_Space, self.onSpacePressed)
-        self.shortcutEndC    = mkShortcut(Qt.Qt.Key_End,   self.stopAfterCurrent)
+        self.shortcutEnd     = mkShortcut(Qt.Qt.Key_End,   self.onEndPressed)
         self.shortcutQuit    = mkShortcut(Qt.Qt.Key_Q,     self.close)
 
         self.setWindowIcon(mkIcon())
@@ -136,6 +136,13 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             self.onPlaylistDoubleClicked(self.lstPlaylist.selectedIndexes()[0])
         else:
             self.repeatCurrent()
+
+    def onEndPressed(self):
+        """ Toggle stopAfter on the selected track or the current one if none is selected. """
+        if self.lstPlaylist.selectedIndexes():
+            self.playlist.toggleStopAfter( self.playlist[self.lstPlaylist.selectedIndexes()[0]] )
+        else:
+            self.stopAfterCurrent()
 
     def repeatCurrent(self):
         """ Toggle repeat for the currently playing track. """
