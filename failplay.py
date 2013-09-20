@@ -72,7 +72,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.connect( self.leLibraryFilter, QtCore.SIGNAL("textEdited(QString)"), self.updateFilter )
         self.connect( self.lstLibrary,  QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.append )
 
-        self.connect( self.lstPlaylist, QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.toggleQueue )
+        self.connect( self.lstPlaylist, QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.onPlaylistDoubleClicked )
 
         self.playlist.currentBg = QtGui.QBrush(Qt.Qt.cyan, Qt.Qt.SolidPattern)
         self.lstPlaylist.setModel(self.playlist)
@@ -115,8 +115,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             self.connect( shortcut, QtCore.SIGNAL("activated()"), callback )
             return shortcut
 
-        self.shortcutMisc    = mkShortcut(Qt.Qt.Key_Enter, self.handleMiscShortcut)
-        self.shortcutRepeatC = mkShortcut(Qt.Qt.Key_Space, self.repeatCurrent)
+        self.shortcutSpace   = mkShortcut(Qt.Qt.Key_Space, self.onSpacePressed)
         self.shortcutEndC    = mkShortcut(Qt.Qt.Key_End,   self.stopAfterCurrent)
         self.shortcutQuit    = mkShortcut(Qt.Qt.Key_Q,     self.close)
 
@@ -125,12 +124,18 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.invstatusbars = False
         self.intransition  = False
 
-    def handleMiscShortcut(self):
-        """ Toggle repeat if currently playing track is selected, en/dequeue otherwise. """
-        index = self.lstPlaylist.selectedIndexes()[0]
+    def onPlaylistDoubleClicked(self, index):
+        """ Toggle repeat if currently playing track is doubleclicked, en/dequeue otherwise. """
         if index.row() == self.playlist.current:
             return self.repeatCurrent()
         return self.toggleQueue(index)
+
+    def onSpacePressed(self):
+        """ Toggle repeat if currently playing track or none is selected, en/dequeue otherwise. """
+        if self.lstPlaylist.selectedIndexes():
+            self.onPlaylistDoubleClicked(self.lstPlaylist.selectedIndexes()[0])
+        else:
+            self.repeatCurrent()
 
     def repeatCurrent(self):
         """ Toggle repeat for the currently playing track. """
