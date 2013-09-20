@@ -107,7 +107,9 @@ class Playlist(QtCore.QAbstractTableModel):
         files.sort( cmp=lambda a, b: cmp(int(a[4:]), int(b[4:])) ) # sort numerically by FileXY
         self.beginInsertRows(QtCore.QModelIndex(), 0, len(files) - 1)
         for fileopt in files:
-            self.append( pls.get("playlist", fileopt) )
+            path = pls.get("playlist", fileopt)
+            self.playlist.append(path)
+            self.emit(Playlist.sig_append, path)
         self.endInsertRows()
 
         if pls.has_section("failplay"):
