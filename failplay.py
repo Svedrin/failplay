@@ -130,7 +130,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         index = self.lstPlaylist.selectedIndexes()[0]
         if index.row() == self.playlist.current:
             return self.repeatCurrent()
-        return self.toggleQueue(self, index)
+        return self.toggleQueue(index)
 
     def repeatCurrent(self):
         """ Toggle repeat for the currently playing track. """
