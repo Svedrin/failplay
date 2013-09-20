@@ -557,7 +557,9 @@ class Player(QtCore.QObject, threading.Thread):
                     prev = None
                     self.pcm.play( srcdata )
                     self.emit(Player.sig_position_normal, self.source)
-                except:
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
                     # some other error happened, just play the other stream in its correct volume
                     fac = max( (prev.duration - prev.pos - transearly), 0 ) / transtime
                     self.emit(Player.sig_position_trans, prev, self.source, fac)
