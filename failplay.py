@@ -69,7 +69,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.lstLibrary.hideColumn(3)
 
         self.connect( self.playlist,    Playlist.sig_datachg, self.updatePlaylist )
-        self.connect( self.leLibraryFilter, QtCore.SIGNAL("textEdited(QString)"), self.updateFilter )
+        self.connect( self.leLibraryFilter, QtCore.SIGNAL("textEdited(QString)"), self.onFilterEdited )
         self.connect( self.lstLibrary,  QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.append )
 
         self.connect( self.lstPlaylist, QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.onPlaylistDoubleClicked )
@@ -153,7 +153,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def updatePlaylist(self, topleft, btright):
         self.lstPlaylist.reset()
 
-    def updateFilter(self, text):
+    def onFilterEdited(self, text):
         if text:
             self.library.setNameFilters(["*" + text + "*"])
         else:
