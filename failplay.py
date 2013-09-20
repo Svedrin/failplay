@@ -57,8 +57,8 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.connect( self.player, Player.sig_started, self.onPlayerStarted )
         self.connect( self.player, Player.sig_stopped, self.close )
 
-        self.connect( self.player, Player.sig_position_normal, self.status_update_normal )
-        self.connect( self.player, Player.sig_position_trans,  self.status_update_trans  )
+        self.connect( self.player, Player.sig_position_normal, self.onPlayerPositionNormal )
+        self.connect( self.player, Player.sig_position_trans,  self.onPlayerPositionTrans  )
 
         self.library = QtGui.QFileSystemModel()
         self.library.setRootPath(librarydir)
@@ -199,7 +199,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             u"%s — %s (%s)" % (source.title, timedelta(seconds=int(source.pos)), timedelta(seconds=int(source.duration)))
             )
 
-    def status_update_normal(self, source):
+    def onPlayerPositionNormal(self, source):
         self.intransition  = False
         if not self.invstatusbars:
             self._status_update(self.pgbSongProgress, source)
@@ -214,7 +214,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             self.pgbSongProgress.setValue(0)
             self.sldCrossfade.setValue(0)
 
-    def status_update_trans(self, prev, source, fac):
+    def onPlayerPositionTrans(self, prev, source, fac):
         if not self.intransition:
             self.intransition  = True
             self.invstatusbars = not self.invstatusbars
