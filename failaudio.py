@@ -526,8 +526,18 @@ class Player(QtCore.QObject, threading.Thread):
             try:
                 srcdata = self.source.data.next()
             except StopIteration:
-                self.emit(Player.sig_stopped, "source ran out of data.")
-                self.source.stop()
+                if not end_of_playlist:
+                    self.source.stop()
+                    print "Huh. Looks like the source file ended prematurely. No transition then."
+                    try:
+                        self.source = self.next()
+                    except StopIteration:
+                        print "Also, there's no more items in the playlist, exiting."
+                    else:
+                        print "Phew, got the next source. Go on people, nothing to see here."
+                        self.source.start()
+                        self.emit(Player.sig_started, self.source)
+                        continue
                 break
             except Exception, err:
                 self.emit(Player.sig_stopped, "Error: " + err.message)
