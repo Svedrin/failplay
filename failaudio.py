@@ -584,6 +584,7 @@ class Player(QtCore.QObject, threading.Thread):
                     self.emit(Player.sig_position_trans, prev, self.source, fac)
                     if len(prevdata) != len(srcdata):
                         # The last chunk may be too short, causing audioop some pain. Screw it, then.
+                        print "Chunk size mismatch (prev=%d, src=%d)" % (len(prevdata), len(srcdata))
                         self.pcm.play( audioop.mul( srcdata, 2, 1 - fac ) )
                     else:
                         sample = audioop.add( audioop.mul( prevdata, 2, fac ), audioop.mul( srcdata, 2, 1 - fac ), 2 )
