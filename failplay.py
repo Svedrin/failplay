@@ -100,10 +100,12 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.actRepeat = QtGui.QAction("Repeat", self.lstPlaylist)
         self.connect( self.actRepeat, QtCore.SIGNAL("triggered(bool)"), self.onRepeatTriggered)
+        self.actRepeat.setShortcut(Qt.Qt.Key_R)
         self.lstPlaylist.insertAction(None, self.actRepeat)
 
         self.actStopAfter = QtGui.QAction("Stop after this track", self.lstPlaylist)
         self.connect( self.actStopAfter, QtCore.SIGNAL("triggered(bool)"), self.onStopAfterTriggered)
+        self.actStopAfter.setShortcut(Qt.Qt.Key_S)
         self.lstPlaylist.insertAction(None, self.actStopAfter)
 
         def mkShortcut(key, callback):
