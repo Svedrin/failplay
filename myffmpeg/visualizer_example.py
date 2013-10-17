@@ -112,9 +112,8 @@ class OglRenderer( object ):
 
         # The first half of the output array contains the fourier coefficients for our frequencies,
         # abs() calcs sqrt(i² + j²) to un-complex-numberfy them.
-        # the sqrt() call then makes the graph look a bit nicer, because changes at a lower volume
-        # make more of a difference than changes at higher volumes.
-        self.points = sqrt(abs(y[1:(n/2)]))
+        self.points = abs(y[1:(n/2)])
+
         self.display()
 
 
