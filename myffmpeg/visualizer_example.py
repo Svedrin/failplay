@@ -11,15 +11,13 @@ pcm = ao.AudioDevice("pulse")
 
 rdr = ffmpeg.Decoder(sys.argv[-1])
 
-from time import time
 from numpy import array, log10, sqrt
 import struct
 from scipy import fft
 import audioop
 
 
-from OpenGL.GL   import *
-from OpenGL.GLUT import *
+from OpenGL import GL, GLUT
 
 class OglRenderer( object ):
     def __init__( self, source, duration, width=250, height=100 ):
@@ -30,35 +28,29 @@ class OglRenderer( object ):
 
         self.points = []
 
-        glutInit( sys.argv )
-        glutInitDisplayMode( GLUT_DOUBLE )
+        GLUT.glutInit( sys.argv )
+        GLUT.glutInitDisplayMode( GLUT.GLUT_DOUBLE )
 
-        self.window = glutCreateWindow( "fft!" )
-        glutReshapeWindow( width, height )
+        self.window = GLUT.glutCreateWindow( "fft!" )
+        GLUT.glutReshapeWindow( width, height )
 
-        glutIdleFunc( self.idle )
-        glutDisplayFunc( self.display )
+        GLUT.glutIdleFunc( self.idle )
+        GLUT.glutDisplayFunc( self.display )
 
         self.framecount = 0
 
 
     def display( self ):
-        glClearColor( 1.0, 1.0, 1.0, 1.0 )
-        glClear( GL_COLOR_BUFFER_BIT )
-        glColor3f( 0.0, 0.0, 0.0 )
+        GL.glClearColor( 1.0, 1.0, 1.0, 1.0 )
+        GL.glClear( GL.GL_COLOR_BUFFER_BIT )
 
-        glMatrixMode( GL_PROJECTION )
-        glLoadIdentity()
-        glOrtho( 0, self.width, 0, self.height, -1, 1 )
+        GL.glMatrixMode( GL.GL_PROJECTION )
+        GL.glLoadIdentity()
+        GL.glOrtho( 0, self.width, 0, self.height, -1, 1 )
 
-        glColor3f( 0.0, 0.0, 0.0 )
-
-        nbpoints = len(self.points) - 1
-
-        glColor3f( 0.9, 0.3, 0.2 )
-        glLineWidth(3);
-        glBegin( GL_LINE_STRIP )
-        glColor3f( 0.9, 0.3, 0.2 )
+        GL.glLineWidth(3)
+        GL.glBegin( GL.GL_LINE_STRIP )
+        GL.glColor3f( 0.9, 0.3, 0.2 )
         plen = max(int(1 / float(self.width) * len(self.points)), 1)
         for x in xrange(self.width):
             pstart = int(x / self.width * len(self.points))
@@ -69,13 +61,12 @@ class OglRenderer( object ):
             # If you feel like explaining what the FHT::logSpectrum method defined in
             # <http://code.google.com/p/clementine-player/source/browse/src/core/fht.cpp>
             # actually does, drop me a mail at <i.am@svedr.in> - I'd appreciate it!
-            glVertex2i( x, int(max(log10(sqrt(prange) + 1.)) * self.height) )
-        glColor3f( 0.9, 0.3, 0.2 )
-        glEnd()
+            GL.glVertex2i( x, int(max(log10(sqrt(prange) + 1.)) * self.height) )
+        GL.glEnd()
 
-        glutSwapBuffers()
+        GLUT.glutSwapBuffers()
 
-        self.framecount +=1
+        self.framecount += 1
 
 
     def idle(self):
@@ -126,4 +117,4 @@ class OglRenderer( object ):
 
 renderer = OglRenderer(rdr.read(), rdr.duration)
 
-glutMainLoop()
+GLUT.glutMainLoop()
