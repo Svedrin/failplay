@@ -93,8 +93,8 @@ class OglRenderer( object ):
         # http://stackoverflow.com/questions/604453/analyze-audio-using-fast-fourier-transform
 
         # Increasing the length of the input stream will yield a more detailed graph.
-        # Input is S16, so scale by 2**16 to get output coordinates in [0,1]
-        y = fft(mono[:64] / float(2**16))
+        # Input is S16, so scale by 2**15 to get output coordinates in [0,1]
+        y = fft(mono[:64] / float(2**15))
         n = 64. #len(mono)
 
         # Calculate the frequencies according to the FFT coefficients. They aren't being displayed
