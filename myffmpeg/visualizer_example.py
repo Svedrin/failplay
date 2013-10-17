@@ -38,6 +38,7 @@ class OglRenderer( object ):
         glutReshapeWindow( width, height )
 
         glutIdleFunc( self.idle )
+        glutDisplayFunc( self.display )
 
         self.framecount = 0
 
