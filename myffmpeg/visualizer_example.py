@@ -102,8 +102,8 @@ class OglRenderer( object ):
 
         # Increasing the length of the input stream will yield a more detailed graph.
         # Input is S16, so scale by 2**15 to get output coordinates in [0,1]
-        y = fft(mono[:64] / float(2**15))
-        n = 64. #len(mono)
+        y = fft(mono[:512] / float(2**15))
+        n = 512 # len(mono)
 
         # Calculate the frequencies according to the FFT coefficients. They aren't being displayed
         # in this example, so it's commented out.
