@@ -369,6 +369,7 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	uint8_t **outbuf;
 	int outnb;
 	int outlen;
+	int outplanes;
 	PyObject* in  = NULL;
 	PyObject* ret = NULL;
 	
@@ -403,9 +404,12 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	if( swr_convert(self->pSwrCtx, outbuf, outnb, (const uint8_t **)indata, innb) < 0 )
 		PyErr_SetString(FfmpegResampleError, "resampling failed");
 	else{
-		// TODO this whole thing should be able to handle planar output formats
-		ret = PyTuple_New(1);
-		PyTuple_SetItem(ret, 0, PyString_FromStringAndSize( (const char*)outbuf[0], outlen ));
+		outplanes = 1;
+		if(av_sample_fmt_is_planar(self->output_sample_format))
+			outplanes = av_get_channel_layout_nb_channels(self->output_channel_layout);
+		ret = PyTuple_New(outplanes);
+		for( i = 0; i < outplanes; i++ )
+			PyTuple_SetItem(ret, i, PyString_FromStringAndSize( (const char*)outbuf[i], outlen ));
 	}
 	
 	free(indata);
