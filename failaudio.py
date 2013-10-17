@@ -583,12 +583,21 @@ class Player(QtCore.QObject, threading.Thread):
                     fac = max( (prev.duration - prev.pos - transearly), 0 ) / transtime
                     self.emit(Player.sig_position_trans, prev, self.source, fac)
                     if len(prevdata) != len(srcdata):
-                        # The last chunk may be too short, causing audioop some pain. Screw it, then.
+                        # The last chunk may be too short, causing audioop some pain.
                         print "Chunk size mismatch (prev=%d, src=%d)" % (len(prevdata), len(srcdata))
-                        self.pcm.play( audioop.mul( srcdata, 2, 1 - fac ) )
+                        if len(prevdata) < len(srcdata):
+                            # looks like this is the case, work around it.
+                            rest = srcdata[len(prevdata):]
+                            srcdata = srcdata[:len(prevdata)]
+                        else:
+                            # doesn't look that way. screw it, then.
+                            self.pcm.play( audioop.mul( srcdata, 2, 1 - fac ) )
                     else:
-                        sample = audioop.add( audioop.mul( prevdata, 2, fac ), audioop.mul( srcdata, 2, 1 - fac ), 2 )
-                        self.pcm.play( sample )
+                        rest = None
+                    sample = audioop.add( audioop.mul( prevdata, 2, fac ), audioop.mul( srcdata, 2, 1 - fac ), 2 )
+                    self.pcm.play( sample )
+                    if rest is not None:
+                        self.pcm.play( audioop.mul( rest, 2, 1 - fac ) )
 
         self.source.stop()
         self.emit(Player.sig_stopped, "end of playlist")
