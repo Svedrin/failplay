@@ -11,7 +11,6 @@ pcm = ao.AudioDevice("pulse")
 
 rdr = ffmpeg.Decoder(sys.argv[-1])
 
-from numpy import sqrt
 from time import time
 from numpy import array
 import struct
