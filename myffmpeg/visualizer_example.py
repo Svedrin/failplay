@@ -76,10 +76,10 @@ class OglRenderer( object ):
             print "FPS:      %d"  % (self.framecount / self.duration)
             sys.exit(0)
 
-        pcm.play( chunk )
+        pcm.play( chunk[0] )
 
         # Join the two streams into a single mono stream and convert it to a numpy array
-        mono = audioop.tomono(chunk, 2, 0.5, 0.5)
+        mono = audioop.tomono(chunk[0], 2, 0.5, 0.5)
         data = []
         while mono:
             data.append( struct.unpack("<h", mono[:2])[0] )
