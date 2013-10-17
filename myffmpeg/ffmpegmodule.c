@@ -413,7 +413,7 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	}
 	
 	free(indata);
-	free(outbuf[0]);
+	free(outbuf);
 	return ret;
 }
 
