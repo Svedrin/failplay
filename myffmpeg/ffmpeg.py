@@ -89,12 +89,11 @@ class Decoder(object):
             while len(self._buffer[0]) < bytes:
                 try:
                     data = self._decoder.read()
+                    if self.resampler is not None:
+                        data = self.resampler.resample(data)
                 except StopIteration:
                     if self._buffer:
-                        if self.resampler is None:
-                            yield tuple(self._buffer)
-                        else:
-                            yield self.resampler.resample(tuple(self._buffer))
+                        yield tuple(self._buffer)
                     raise StopIteration
                 except DecodeError, err:
                     # Ignore DecodeErrors at the very beginning of the file
@@ -112,10 +111,7 @@ class Decoder(object):
                 ret.append(channeldata[:bytes])
                 self._buffer[idx] = channeldata[bytes:]
 
-            if self.resampler is None:
-                yield tuple(ret)
-            else:
-                yield self.resampler.resample(tuple(ret))
+            yield tuple(ret)
 
     def dump_format(self):
         """ Dump input file format information to stdout. """
