@@ -340,6 +340,26 @@ static void ffmpeg_resampler_dealloc( ffmpegResamplerObject* self ){
 	swr_free(&self->pSwrCtx);
 }
 
+
+// For some reason, Debian insists on packaging a version that doesn't have this, so the following is
+// shamelessly stolen from samplefmt.c.
+// see http://www.ffmpeg.org/doxygen/trunk/samplefmt_8c_source.html
+int av_samples_alloc_array_and_samples(uint8_t ***audio_data, int *linesize, int nb_channels,
+					int nb_samples, enum AVSampleFormat sample_fmt, int align)
+{
+	int ret, nb_planes = av_sample_fmt_is_planar(sample_fmt) ? nb_channels : 1;
+
+	*audio_data = av_calloc(nb_planes, sizeof(**audio_data));
+	if (!*audio_data)
+		return AVERROR(ENOMEM);
+	ret = av_samples_alloc(*audio_data, linesize, nb_channels,
+				nb_samples, sample_fmt, align);
+	if (ret < 0)
+		av_freep(audio_data);
+	return ret;
+}
+
+
 static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObject* args ){
 	const char** indata = NULL;
 	int i;
