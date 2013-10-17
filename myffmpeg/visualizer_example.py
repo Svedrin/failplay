@@ -84,6 +84,10 @@ class OglRenderer( object ):
 
         pcm.play( chunk[0] )
 
+        if self.framecount % 3 != 0:
+            self.display()
+            return
+
         # Join the two streams into a single mono stream and convert it to a numpy array
         mono = audioop.tomono(chunk[0], 2, 0.5, 0.5)
         data = []
