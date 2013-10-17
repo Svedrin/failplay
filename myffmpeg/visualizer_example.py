@@ -59,8 +59,11 @@ class OglRenderer( object ):
         glLineWidth(3);
         glBegin( GL_LINE_STRIP )
         glColor3f( 0.9, 0.3, 0.2 )
-        for idx, pnt in enumerate(self.points):
-            glVertex2i( int(idx / float(nbpoints) * self.width), int(pnt * self.height) )
+        plen = max(int(1 / float(self.width) * len(self.points)), 1)
+        for x in xrange(self.width):
+            pstart = int(x / self.width * len(self.points))
+            prange = self.points[pstart:pstart + plen]
+            glVertex2i( x, int(max(prange) * self.height) )
         glColor3f( 0.9, 0.3, 0.2 )
         glEnd()
 
