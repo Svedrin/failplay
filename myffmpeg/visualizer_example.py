@@ -12,7 +12,7 @@ pcm = ao.AudioDevice("pulse")
 rdr = ffmpeg.Decoder(sys.argv[-1])
 
 from time import time
-from numpy import array
+from numpy import array, log10, sqrt
 import struct
 from scipy import fft
 import audioop
@@ -63,7 +63,13 @@ class OglRenderer( object ):
         for x in xrange(self.width):
             pstart = int(x / self.width * len(self.points))
             prange = self.points[pstart:pstart + plen]
-            glVertex2i( x, int(max(prange) * self.height) )
+            # The log10(sqrt(prange) + 1.) part is totally ripped from Clementine. I don't
+            # have any clue what it does, but it does make the thing look a whole lot nicer.
+            # You do lose some detail because of it, though.
+            # If you feel like explaining what the FHT::logSpectrum method defined in
+            # <http://code.google.com/p/clementine-player/source/browse/src/core/fht.cpp>
+            # actually does, drop me a mail at <i.am@svedr.in> - I'd appreciate it!
+            glVertex2i( x, int(max(log10(sqrt(prange) + 1.)) * self.height) )
         glColor3f( 0.9, 0.3, 0.2 )
         glEnd()
 
