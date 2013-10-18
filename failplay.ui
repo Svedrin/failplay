@@ -7,14 +7,14 @@
     <x>0</x>
     <y>0</y>
     <width>632</width>
-    <height>469</height>
+    <height>662</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>FailPlay</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_3">
+   <layout class="QVBoxLayout" name="verticalLayout_4">
     <item>
      <widget class="QSplitter" name="splitter">
       <property name="sizePolicy">
@@ -85,33 +85,24 @@
      </widget>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_2">
-      <property name="sizeConstraint">
-       <enum>QLayout::SetMinimumSize</enum>
-      </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <layout class="QVBoxLayout" name="verticalLayout">
         <property name="sizeConstraint">
          <enum>QLayout::SetMinimumSize</enum>
         </property>
         <item>
-         <widget class="QProgressBar" name="pgbSongProgress">
-          <property name="value">
-           <number>0</number>
-          </property>
-          <property name="textVisible">
-           <bool>true</bool>
-          </property>
-          <property name="invertedAppearance">
-           <bool>false</bool>
-          </property>
-          <property name="format">
-           <string>Idle</string>
+         <widget class="QFftAnalyzer" name="anzSong" native="true">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>100</height>
+           </size>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QProgressBar" name="pgbSongProgressPrev">
+         <widget class="QProgressBar" name="pgbSongProgress">
           <property name="value">
            <number>0</number>
           </property>
@@ -149,9 +140,39 @@
          <number>100</number>
         </property>
         <property name="orientation">
-         <enum>Qt::Vertical</enum>
+         <enum>Qt::Horizontal</enum>
         </property>
        </widget>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <widget class="QFftAnalyzer" name="anzPrev" native="true">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>100</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QProgressBar" name="pgbSongProgressPrev">
+          <property name="value">
+           <number>0</number>
+          </property>
+          <property name="textVisible">
+           <bool>true</bool>
+          </property>
+          <property name="invertedAppearance">
+           <bool>false</bool>
+          </property>
+          <property name="format">
+           <string>Idle</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </item>
@@ -163,7 +184,7 @@
      <x>0</x>
      <y>0</y>
      <width>632</width>
-     <height>22</height>
+     <height>20</height>
     </rect>
    </property>
   </widget>
@@ -174,6 +195,12 @@
    <class>LibraryView</class>
    <extends>QTreeView</extends>
    <header>libraryview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QFftAnalyzer</class>
+   <extends>QWidget</extends>
+   <header location="global">analyzer.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>
