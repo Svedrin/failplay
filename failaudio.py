@@ -485,8 +485,8 @@ class Player(QtCore.QObject, threading.Thread):
     sig_transition_start = QtCore.SIGNAL( 'transition_start(const PyQt_PyObject, const PyQt_PyObject)' )
     sig_transition_end   = QtCore.SIGNAL( 'transition_start(const PyQt_PyObject, const PyQt_PyObject)' )
 
-    sig_position_normal  = QtCore.SIGNAL( 'position_normal(const PyQt_PyObject)' )
-    sig_position_trans   = QtCore.SIGNAL( 'position_trans(const PyQt_PyObject, const PyQt_PyObject, const float)' )
+    sig_position_normal  = QtCore.SIGNAL( 'position_normal(const PyQt_PyObject, const QByteArray)' )
+    sig_position_trans   = QtCore.SIGNAL( 'position_trans(const PyQt_PyObject, const PyQt_PyObject, const float, const QString, const QByteArray)' )
 
     sig_started          = QtCore.SIGNAL( 'started(const PyQt_PyObject)' )
     sig_stopped          = QtCore.SIGNAL( 'stopped(const QString)' )
@@ -546,7 +546,7 @@ class Player(QtCore.QObject, threading.Thread):
 
             if prev is None:
                 self.pcm.play( srcdata )
-                self.emit(Player.sig_position_normal, self.source)
+                self.emit(Player.sig_position_normal, self.source, srcdata)
 
                 if self.source.duration - self.source.pos - transearly <= transtime and not end_of_playlist:
                     #print "Entering transition!"
@@ -571,17 +571,17 @@ class Player(QtCore.QObject, threading.Thread):
                     prev.stop()
                     prev = None
                     self.pcm.play( srcdata )
-                    self.emit(Player.sig_position_normal, self.source)
+                    self.emit(Player.sig_position_normal, self.source, srcdata)
                 except Exception:
                     import traceback
                     traceback.print_exc()
                     # some other error happened, just play the other stream in its correct volume
                     fac = max( (prev.duration - prev.pos - transearly), 0 ) / transtime
-                    self.emit(Player.sig_position_trans, prev, self.source, fac)
+                    self.emit(Player.sig_position_trans, prev, self.source, fac, "", srcdata)
                     self.pcm.play( audioop.mul( srcdata, 2, 1 - fac ) )
                 else:
                     fac = max( (prev.duration - prev.pos - transearly), 0 ) / transtime
-                    self.emit(Player.sig_position_trans, prev, self.source, fac)
+                    self.emit(Player.sig_position_trans, prev, self.source, fac, prevdata, srcdata)
                     if len(prevdata) != len(srcdata):
                         # The last chunk may be too short, causing audioop some pain.
                         print "Chunk size mismatch (prev=%d, src=%d)" % (len(prevdata), len(srcdata))
