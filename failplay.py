@@ -246,7 +246,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             self._status_update(self.pgbSongProgress, prev)
             self.sldCrossfade.setValue((1 - fac) * 100)
             self.anzPrev(srcdata)
-            self.anzSong(srcdata)
+            self.anzSong(prevdata)
 
 
 
