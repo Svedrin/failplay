@@ -214,33 +214,39 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             u"%s — %s (%s)" % (source.title, timedelta(seconds=int(source.pos)), timedelta(seconds=int(source.duration)))
             )
 
-    def onPlayerPositionNormal(self, source):
+    def onPlayerPositionNormal(self, source, srcdata):
         self.intransition  = False
         if not self.invstatusbars:
             self._status_update(self.pgbSongProgress, source)
             self.pgbSongProgressPrev.setFormat("Idle")
             self.pgbSongProgressPrev.setMaximum(100)
             self.pgbSongProgressPrev.setValue(0)
-            self.sldCrossfade.setValue(100)
+            self.sldCrossfade.setValue(0)
+            self.anzSong(srcdata)
         else:
             self._status_update(self.pgbSongProgressPrev, source)
             self.pgbSongProgress.setFormat("Idle")
             self.pgbSongProgress.setMaximum(100)
             self.pgbSongProgress.setValue(0)
-            self.sldCrossfade.setValue(0)
+            self.sldCrossfade.setValue(100)
+            self.anzPrev(srcdata)
 
-    def onPlayerPositionTrans(self, prev, source, fac):
+    def onPlayerPositionTrans(self, prev, source, fac, prevdata, srcdata):
         if not self.intransition:
             self.intransition  = True
             self.invstatusbars = not self.invstatusbars
         if not self.invstatusbars:
             self._status_update(self.pgbSongProgress, source)
             self._status_update(self.pgbSongProgressPrev, prev)
-            self.sldCrossfade.setValue((1 - fac) * 100)
+            self.sldCrossfade.setValue(fac * 100)
+            self.anzSong(srcdata)
+            self.anzPrev(prevdata)
         else:
             self._status_update(self.pgbSongProgressPrev, source)
             self._status_update(self.pgbSongProgress, prev)
-            self.sldCrossfade.setValue(fac * 100)
+            self.sldCrossfade.setValue((1 - fac) * 100)
+            self.anzPrev(srcdata)
+            self.anzSong(srcdata)
 
 
 
