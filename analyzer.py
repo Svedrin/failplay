@@ -34,14 +34,14 @@ class QFftAnalyzer( QtGui.QWidget ):
             painter.drawLine( left + x, top + height, left + x, top + height - thing)
 
     def __call__(self, chunk):
-        mono = audioop.tomono(chunk, 2, 0.5, 0.5)[:self.columns * 2 * 2 * 2]
+        # we only need data for self.columns * 2 for FFT * 2 channels * 2 bytes per sample
+        mono = audioop.tomono(chunk[:self.columns * 2 * 2 * 2], 2, 0.5, 0.5)
         data = []
         while mono:
             data.append( struct.unpack("<h", mono[:2])[0] )
             mono = mono[2:]
 
         mono = array(data)
-        #columns = min(len(mono) / 2, self.columns)
         y = fft(mono / float(2**15))
 
         self.points = abs(y[1:self.columns])
