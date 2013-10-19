@@ -33,7 +33,7 @@ from distutils.core import setup, Extension
 ffmpegmodule = Extension(
 	'_ffmpeg',
 	sources   = ['ffmpegmodule.c'],
-	libraries = ["avcodec", "avformat", "avutil", "swresample"]
+	libraries = ["avcodec", "avformat", "avutil", "avresample"]
 	)
 
 setup(

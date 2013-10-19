@@ -22,7 +22,11 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libswresample/swresample.h>
+#include <libavresample/avresample.h>
+#include <libavutil/avutil.h>
+#include <libavutil/opt.h>
+#include <libavutil/mathematics.h>
+
 
 #define MODULE_DOCSTRING "Python Module that decodes audio using FFmpeg's lavc."
 #define DECODER_DOCSTRING ""\
@@ -281,7 +285,7 @@ static PyTypeObject ffmpegDecoder = {
 
 typedef struct {
 	PyObject_HEAD
-	SwrContext *pSwrCtx;
+	AVAudioResampleContext *pResampleCtx;
 	int output_rate;
 	int input_rate;
 	int output_channel_layout;
@@ -319,25 +323,28 @@ static PyObject* ffmpeg_resampler_new( PyTypeObject* type, PyObject* args, PyObj
 		return NULL;
 	}
 	
-	self->pSwrCtx = swr_alloc_set_opts(NULL,
-		self->output_channel_layout, self->output_sample_format, self->output_rate,
-		self->input_channel_layout,  self->input_sample_format,  self->input_rate,
-		0, NULL
-	);
+	self->pResampleCtx = avresample_alloc_context();
 	
-	if( self->pSwrCtx == NULL ){
+	if( self->pResampleCtx == NULL ){
 		PyErr_SetString(FfmpegResampleError, "could not initialize resampler");
 		type->tp_free( self );
 		return NULL;
 	}
 	
-	swr_init(self->pSwrCtx);
+	av_opt_set_int(self->pResampleCtx, "in_channel_layout",  self->input_channel_layout,  0);
+	av_opt_set_int(self->pResampleCtx, "out_channel_layout", self->output_channel_layout, 0);
+	av_opt_set_int(self->pResampleCtx, "in_sample_rate",     self->input_rate,            0);
+	av_opt_set_int(self->pResampleCtx, "out_sample_rate",    self->output_rate,           0);
+	av_opt_set_int(self->pResampleCtx, "in_sample_fmt",      self->input_sample_format,   0);
+	av_opt_set_int(self->pResampleCtx, "out_sample_fmt",     self->output_sample_format,  0);
+	
+	avresample_open(self->pResampleCtx);
 	
 	return (PyObject *)self;
 }
 
 static void ffmpeg_resampler_dealloc( ffmpegResamplerObject* self ){
-	swr_free(&self->pSwrCtx);
+	avresample_free(&self->pResampleCtx);
 }
 
 
@@ -349,7 +356,7 @@ int av_samples_alloc_array_and_samples(uint8_t ***audio_data, int *linesize, int
 {
 	int ret, nb_planes = av_sample_fmt_is_planar(sample_fmt) ? nb_channels : 1;
 
-	*audio_data = av_calloc(nb_planes, sizeof(**audio_data));
+	*audio_data = av_mallocz(nb_planes * sizeof(**audio_data));
 	if (!*audio_data)
 		return AVERROR(ENOMEM);
 	ret = av_samples_alloc(*audio_data, linesize, nb_channels,
@@ -386,7 +393,7 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	inlen = PyString_Size(PyTuple_GetItem(in, 0));
 	innb  = inlen / av_get_bytes_per_sample(self->input_sample_format);
 	
-	outnb  = av_rescale_rnd(innb + swr_get_delay(self->pSwrCtx, self->input_rate),
+	outnb  = av_rescale_rnd(innb + avresample_get_delay(self->pResampleCtx),
 				self->output_rate, self->input_rate, AV_ROUND_UP);
 	
 	outlen = av_samples_get_buffer_size(
@@ -401,7 +408,7 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 		return NULL;
 	}
 	
-	if( swr_convert(self->pSwrCtx, outbuf, outnb, (const uint8_t **)indata, innb) < 0 )
+	if( avresample_convert(self->pResampleCtx, outbuf, 0, outnb, (uint8_t **)indata, 0, innb) < 0 )
 		PyErr_SetString(FfmpegResampleError, "resampling failed");
 	else{
 		outplanes = 1;
