@@ -173,8 +173,10 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def onFilterEdited(self, text):
         if text:
             self.library.setNameFilters(["*" + text + "*"])
+            self.lstLibrary.expandAll()
         else:
             self.library.setNameFilters([])
+            self.lstLibrary.collapseAll()
 
     def onPlayerStarted(self):
         self.lstPlaylist.scrollTo( self.playlist.index( self.playlist.current ), QtGui.QAbstractItemView.PositionAtCenter )
