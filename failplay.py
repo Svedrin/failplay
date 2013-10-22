@@ -18,6 +18,7 @@
 
 import os, sys
 import struct
+import re
 
 from datetime import timedelta
 from optparse import OptionParser
@@ -125,6 +126,8 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.intransition  = False
         self.selection     = None
 
+        self.titleregex = re.compile(r"(?P<title>[^(]+)\([^)]+\)?")
+
     def start(self):
         self.player.start()
 
@@ -211,9 +214,15 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def _status_update(self, progressbar, source):
         progressbar.setMaximum(source.duration)
         progressbar.setValue(source.pos)
+        # see if the title is "asd - sdf (some stuff)", and if so, strip the parens
+        match = self.titleregex.match(source.title)
+        if match is None:
+            title = source.title
+        else:
+            title = match.group("title")
         # Let's abuse setFormat() a little, shall we?
         progressbar.setFormat(
-            u"%s — %s (%s)" % (source.title, timedelta(seconds=int(source.pos)), timedelta(seconds=int(source.duration)))
+            u"%s — %s (%s)" % (title, timedelta(seconds=int(source.pos)), timedelta(seconds=int(source.duration)))
             )
 
     def onPlayerPositionNormal(self, source, srcdata):
