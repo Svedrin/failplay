@@ -126,7 +126,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.intransition  = False
         self.selection     = None
 
-        self.titleregex = re.compile(r"(?P<title>[^(]+)\([^)]+\)?")
+        self.titleregex = re.compile(r"(?P<title>[^(]+)\([^)]+\)?$")
 
     def start(self):
         self.player.start()
