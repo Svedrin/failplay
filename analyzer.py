@@ -22,6 +22,9 @@ class QFftAnalyzer( QtGui.QWidget ):
         painter = QtGui.QPainter(self)
         painter.fillRect(evt.rect(), self.palette().color(QtGui.QPalette.Window))
 
+        if len(self.points) == 0:
+            return
+
         top    = evt.rect().top()
         left   = evt.rect().left()
         width  = evt.rect().width()
@@ -34,6 +37,10 @@ class QFftAnalyzer( QtGui.QWidget ):
             painter.drawLine( left + x, top + height, left + x, top + height - thing)
 
     def __call__(self, chunk):
+        if not chunk:
+            self.points = []
+            return
+
         # we only need data for self.columns * 2 for FFT * 2 channels * 2 bytes per sample
         mono = audioop.tomono(chunk[:self.columns * 2 * 2 * 2], 2, 0.5, 0.5)
         mono = numpy.frombuffer(mono, numpy.short)
