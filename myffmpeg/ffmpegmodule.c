@@ -376,7 +376,7 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	uint8_t **outbuf;
 	int outnb;
 	int outlen;
-	int outplanes;
+	int outplanes = 0;
 	PyObject* in  = NULL;
 	PyObject* ret = NULL;
 	
@@ -420,6 +420,11 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	}
 	
 	free(indata);
+	
+	for( i = 0; i < outplanes; i++ ){
+		free(outbuf[i]);
+	}
+	
 	free(outbuf);
 	return ret;
 }
