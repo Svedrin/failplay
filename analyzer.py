@@ -3,10 +3,10 @@
 
 from __future__ import division
 
-from numpy import array, log10, sqrt
-import struct
-from scipy import fft
+import numpy
 import audioop
+
+from scipy import fft
 
 from PyQt4 import Qt
 from PyQt4 import QtCore
@@ -30,18 +30,13 @@ class QFftAnalyzer( QtGui.QWidget ):
         for x in xrange(width):
             pstart = int(x / width * len(self.points))
             prange = self.points[pstart:pstart + plen]
-            thing = int(max(log10(sqrt(prange) + 1.)) * height)
+            thing = int(max(numpy.log10(numpy.sqrt(prange) + 1.)) * height)
             painter.drawLine( left + x, top + height, left + x, top + height - thing)
 
     def __call__(self, chunk):
         # we only need data for self.columns * 2 for FFT * 2 channels * 2 bytes per sample
         mono = audioop.tomono(chunk[:self.columns * 2 * 2 * 2], 2, 0.5, 0.5)
-        data = []
-        while mono:
-            data.append( struct.unpack("<h", mono[:2])[0] )
-            mono = mono[2:]
-
-        mono = array(data)
+        mono = numpy.frombuffer(mono, numpy.short)
         y = fft(mono / float(2**15))
 
         self.points = abs(y[1:self.columns])
