@@ -369,6 +369,7 @@ int av_samples_alloc_array_and_samples(uint8_t ***audio_data, int *linesize, int
 
 static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObject* args ){
 	const char** indata = NULL;
+	int err = 0;
 	int i;
 	int innb;
 	int inlen;
@@ -386,6 +387,10 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	inplanes = PyTuple_Size(in);
 	
 	indata = malloc( sizeof(const char*) * inplanes );
+	if( indata == NULL ){
+		PyErr_SetString(FfmpegResampleError, "out of memory");
+		return NULL;
+	}
 	for( i = 0; i < inplanes; i++ ){
 		indata[i] = PyString_AsString(PyTuple_GetItem(in, i));
 	}
@@ -402,21 +407,25 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	);
 	
 	if( av_samples_alloc_array_and_samples(&outbuf, NULL,
-		av_get_channel_layout_nb_channels(self->output_channel_layout),
-		outnb, self->output_sample_format, 0) < 0 ){
+			av_get_channel_layout_nb_channels(self->output_channel_layout),
+			outnb, self->output_sample_format, 0) < 0 ){
 		PyErr_SetString(FfmpegResampleError, "out of memory");
-		return NULL;
+		err = 1;
 	}
 	
-	if( avresample_convert(self->pResampleCtx, outbuf, 0, outnb, (uint8_t **)indata, 0, innb) < 0 )
-		PyErr_SetString(FfmpegResampleError, "resampling failed");
-	else{
-		outplanes = 1;
-		if(av_sample_fmt_is_planar(self->output_sample_format))
-			outplanes = av_get_channel_layout_nb_channels(self->output_channel_layout);
-		ret = PyTuple_New(outplanes);
-		for( i = 0; i < outplanes; i++ )
-			PyTuple_SetItem(ret, i, PyString_FromStringAndSize( (const char*)outbuf[i], outlen ));
+	if( !err ){
+		if( avresample_convert(self->pResampleCtx, outbuf, 0, outnb, (uint8_t **)indata, 0, innb) < 0 ){
+			PyErr_SetString(FfmpegResampleError, "resampling failed");
+			err = 2;
+		}
+		else{
+			outplanes = 1;
+			if(av_sample_fmt_is_planar(self->output_sample_format))
+				outplanes = av_get_channel_layout_nb_channels(self->output_channel_layout);
+			ret = PyTuple_New(outplanes);
+			for( i = 0; i < outplanes; i++ )
+				PyTuple_SetItem(ret, i, PyString_FromStringAndSize( (const char*)outbuf[i], outlen ));
+		}
 	}
 	
 	free(indata);
@@ -426,6 +435,7 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	}
 	
 	free(outbuf);
+	
 	return ret;
 }
 
