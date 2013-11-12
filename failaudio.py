@@ -655,7 +655,7 @@ if __name__ == '__main__':
 
     app = QtCore.QCoreApplication([])
 
-    player = Player("pulse", p)
+    player = Player(getconf("out", "pulse"), p)
 
     class ConPrinter(QtCore.QObject):
         class Colors:
