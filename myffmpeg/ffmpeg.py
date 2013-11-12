@@ -97,6 +97,9 @@ class Decoder(object):
             while len(self._buffer[0]) < bytes:
                 try:
                     data = self._decoder.read()
+                    if self.channels == 1:
+                        # TODO: hartes Gepfusche
+                        data = (data[0], data[0])
                     if self.resampler is not None:
                         data = self.resampler.resample(data)
                 except StopIteration:
