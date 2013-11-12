@@ -607,6 +607,7 @@ class Player(QtCore.QObject, threading.Thread):
 
 if __name__ == '__main__':
     import os
+    import signal
     from optparse import OptionParser
     from datetime import timedelta
 
@@ -716,9 +717,13 @@ if __name__ == '__main__':
     player.connect( player, Player.sig_stopped, printer.showstatus_stop    )
     player.connect( player, Player.sig_stopped, app.quit )
 
-    print "OK, here we go - hit q to exit."
+    print "OK, here we go - hit ^C to exit."
 
     player.start()
+
+    def sigint_handler(sig, frame):
+        player.stop()
+    signal.signal(signal.SIGINT, sigint_handler)
 
     app.exec_()
 
