@@ -38,7 +38,7 @@ class Source(QtCore.QObject):
         self.path  = path
         self.fd    = Decoder(path)
         self.gen   = None
-        self.title = path.rsplit( '/', 1 )[1].rsplit('.', 1)[0]
+        self.title = (path.rsplit( '/', 1 )[1] if "/" in path else path).rsplit('.', 1)[0]
         self.fd.dump_format()
 
     def start(self):
