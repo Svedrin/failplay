@@ -16,6 +16,8 @@
  *  GNU General Public License for more details.
 """
 
+import sys
+
 from os.path import exists
 from shutil import copyfile
 
@@ -606,6 +608,7 @@ class Player(QtCore.QObject, threading.Thread):
 if __name__ == '__main__':
     import os
     from optparse import OptionParser
+    from datetime import timedelta
 
     parser = OptionParser(usage="%prog [options] [<file> ...]\n")
     parser.add_option( "-o", "--out",
@@ -652,24 +655,63 @@ if __name__ == '__main__':
     player = Player("pulse", p)
 
     class ConPrinter(QtCore.QObject):
-        def showstatus_normal(self, src):
+        class Colors:
+            gray    = 30
+            red     = 31
+            green   = 32
+            yellow  = 33
+            blue    = 34
+            magenta = 35
+            cyan    = 36
+            white   = 37
+            crimson = 38
+
+            class Highlighted:
+                red     = 41
+                green   = 42
+                brown   = 43
+                blue    = 44
+                magenta = 45
+                cyan    = 46
+                gray    = 47
+                crimson = 48
+
+        def colorprint(self, color, text):
+            sys.stdout.write("\033[1;%dm%s\033[1;m" % (color, text))
+
+        def termclear(self):
             # \x1b[K = VT100 delete everything right of the cursor
-            print "\r\x1b[K", src.title, src.pos,
+            sys.stdout.write("\r\x1b[K")
+
+        def sourcetext(self, source):
+            return u"%s — %s (%s)" % (source.title, timedelta(seconds=int(source.pos)), timedelta(seconds=int(source.duration)))
+
+        def showstatus_normal(self, src):
+            self.termclear()
+            self.colorprint(ConPrinter.Colors.blue, self.sourcetext(src))
+            sys.stdout.flush()
 
         def showstatus_transition(self, prev, src):
-            # \x1b[K = VT100 delete everything right of the cursor
-            print "\r\x1b[K", prev.title, prev.pos, u'→', src.title + src.pos,
+            self.termclear()
+            self.colorprint(ConPrinter.Colors.red,   self.sourcetext(prev))
+            sys.stdout.write(u" → ")
+            self.colorprint(ConPrinter.Colors.green, self.sourcetext(src))
+            sys.stdout.flush()
 
         def showstatus_started(self, src):
+            self.termclear()
             print "Now playing:", src.title
+            sys.stdout.flush()
 
         def showstatus_stop(self, msg):
+            self.termclear()
             print "Exit:", msg
+            sys.stdout.flush()
 
     printer = ConPrinter()
 
-    #player.connect( player, Player.sig_position_normal, printer.showstatus_normal     )
-    #player.connect( player, Player.sig_position_trans,  printer.showstatus_transition )
+    player.connect( player, Player.sig_position_normal, printer.showstatus_normal     )
+    player.connect( player, Player.sig_position_trans,  printer.showstatus_transition )
     player.connect( player, Player.sig_started, printer.showstatus_started )
     player.connect( player, Player.sig_stopped, printer.showstatus_stop    )
     player.connect( player, Player.sig_stopped, app.quit )
