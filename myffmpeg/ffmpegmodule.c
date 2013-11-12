@@ -169,6 +169,10 @@ static PyObject* ffmpeg_decoder_get_channels( ffmpegDecoderObject* self ){
 	return PyInt_FromLong( self->pCodecCtx->channels );
 }
 
+static PyObject* ffmpeg_decoder_get_channel_layout( ffmpegDecoderObject* self ){
+	return PyInt_FromLong( self->pCodecCtx->channel_layout );
+}
+
 static PyObject* ffmpeg_decoder_get_codec( ffmpegDecoderObject* self ){
 	return PyString_FromString( self->pCodecCtx->codec->name );
 }
@@ -256,6 +260,7 @@ static PyMethodDef ffmpegDecoderObject_Methods[] = {
 	{ "get_samplerate", (PyCFunction)ffmpeg_decoder_get_samplerate, METH_NOARGS, "get_samplerate()\nReturn the sample rate of the decoded file." },
 	{ "get_samplefmt",  (PyCFunction)ffmpeg_decoder_get_samplefmt,  METH_NOARGS, "get_samplefmt()\nReturn the sample format of the decoded file." },
 	{ "get_channels",   (PyCFunction)ffmpeg_decoder_get_channels,   METH_NOARGS, "get_channels()\nReturn the number of channels in the decoded file." },
+	{ "get_channel_layout", (PyCFunction)ffmpeg_decoder_get_channel_layout, METH_NOARGS, "get_channel_layout()\nReturn the channel layout." },
 	{ "get_duration",   (PyCFunction)ffmpeg_decoder_get_duration,   METH_NOARGS, "get_duration()\nReturn the duration of the decoded file in seconds." },
 	{ "get_metadata",   (PyCFunction)ffmpeg_decoder_get_metadata,   METH_NOARGS, "get_metadata()\nReturn a dict containing the file's meta data." },
 	{ "get_codec",      (PyCFunction)ffmpeg_decoder_get_codec,      METH_NOARGS, "get_codec()\nReturn the name of the codec being used." },
@@ -539,6 +544,14 @@ PyMODINIT_FUNC init_ffmpeg(void){
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_FLTP );
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_DBLP );
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_NB   );
+
+	PyModule_AddIntMacro( module, AV_CH_LAYOUT_STEREO         );
+	PyModule_AddIntMacro( module, AV_CH_LAYOUT_2POINT1        );
+	PyModule_AddIntMacro( module, AV_CH_LAYOUT_2_1            );
+	PyModule_AddIntMacro( module, AV_CH_LAYOUT_SURROUND       );
+	PyModule_AddIntMacro( module, AV_CH_LAYOUT_2_2            );
+	PyModule_AddIntMacro( module, AV_CH_LAYOUT_QUAD           );
+	PyModule_AddIntMacro( module, AV_CH_LAYOUT_STEREO_DOWNMIX );
 	
 	avcodec_register_all();
 	av_register_all();

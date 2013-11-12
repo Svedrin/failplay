@@ -30,7 +30,14 @@ from _ffmpeg import Decoder as LowLevelDecoder, Resampler, \
                     AV_SAMPLE_FMT_S32P, \
                     AV_SAMPLE_FMT_FLTP, \
                     AV_SAMPLE_FMT_DBLP, \
-                    AV_SAMPLE_FMT_NB
+                    AV_SAMPLE_FMT_NB,   \
+                    AV_CH_LAYOUT_STEREO,   \
+                    AV_CH_LAYOUT_2POINT1,  \
+                    AV_CH_LAYOUT_2_1,      \
+                    AV_CH_LAYOUT_SURROUND, \
+                    AV_CH_LAYOUT_2_2,      \
+                    AV_CH_LAYOUT_QUAD,     \
+                    AV_CH_LAYOUT_STEREO_DOWNMIX
 
 
 class Decoder(object):
@@ -66,6 +73,7 @@ class Decoder(object):
             self.resampler = None
 
     channels   = property( lambda self: self._decoder.get_channels(),   doc="The number of channels in the input stream." )
+    channel_layout = property( lambda self: self._decoder.get_channel_layout(), doc="The channel layout of the input stream." )
     bitrate    = property( lambda self: self._decoder.get_bitrate(),    doc="The bitrate of the input channels." )
     duration   = property( lambda self: self._decoder.get_duration(),   doc="The length of the input stream in seconds." )
     path       = property( lambda self: self._decoder.get_path(),       doc="The input file path." )
