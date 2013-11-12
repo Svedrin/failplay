@@ -650,6 +650,8 @@ if __name__ == '__main__':
         else:
             p.append(filename)
 
+    if not playlistfile and posargs:
+        p.toggleStopAfter(posargs[-1])
 
     app = QtCore.QCoreApplication([])
 
