@@ -89,7 +89,10 @@ class Decoder(object):
     @property
     def position(self):
         """ The player's position in the file in seconds. """
-        return self._readbytes / float(self.samplerate * self.channels * get_bytes_per_sample(self.samplefmt))
+        # the  "* 2" should be "* self.channels", but since we always return mono
+        # copied to stereo, mono bytes get counted twice, so it evens out.
+        # this mono stuff sucks horribly...
+        return self._readbytes / float(self.samplerate * 2 * get_bytes_per_sample(self.samplefmt))
 
     def read(self, bytes=4096):
         """ Get chunks of exactly ``bytes`` length. """
