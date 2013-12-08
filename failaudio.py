@@ -425,13 +425,13 @@ class Playlist(QtCore.QAbstractTableModel):
         elif index.column() == 1:
             if role == Qt.Qt.DisplayRole:
                 modifiers = []
+                if path in self.jmpqueue:
+                    modifiers.append( unicode(self.jmpqueue.index(path) + 1) )
+                if index.row() == self.repeat:
+                    modifiers.append( u'♻' )
                 if index.row() == self.stopafter:
                     # http://www.decodeunicode.org/de/geometric_shapes
                     modifiers.append( u'◾' ) #■◾◼
-                if index.row() == self.repeat:
-                    modifiers.append( u'♻' )
-                if path in self.jmpqueue:
-                    modifiers.append( unicode(self.jmpqueue.index(path) + 1) )
                 return ''.join(modifiers)
 
     def columnCount(self, parent):
