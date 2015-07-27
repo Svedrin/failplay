@@ -25,6 +25,8 @@ FailPlay doesn't (and probably never will) have:
 * Volume change thingy. Use your remote. Or `pavucontrol`.
 * Support for streams, as you don't gain anything from the cool playlist features for streams.
 
+Here's a ![Screenshot](https://bitbucket.org/Svedrin/failplay/downloads/failplay.png).
+
 FailAudio
 =========
 
