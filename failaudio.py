@@ -418,9 +418,9 @@ class Playlist(QtCore.QAbstractTableModel):
 
         elif index.column() == 0:
             if role == Qt.Qt.DisplayRole:
-                return self._parse_title(path)
+                return self._parse_title(path).decode("utf-8")
             elif role == Qt.Qt.UserRole:
-                return path
+                return path.decode("utf-8")
 
         elif index.column() == 1:
             if role == Qt.Qt.DisplayRole:
