@@ -109,7 +109,7 @@ class Playlist(QtCore.QAbstractTableModel):
         files.sort( cmp=lambda a, b: cmp(int(a[4:]), int(b[4:])) ) # sort numerically by FileXY
         self.beginInsertRows(QtCore.QModelIndex(), 0, len(files) - 1)
         for fileopt in files:
-            path = pls.get("playlist", fileopt)
+            path = pls.get("playlist", fileopt).decode("utf-8")
             self.playlist.append(path)
             self.emit(Playlist.sig_append, path)
         self.endInsertRows()
@@ -148,8 +148,8 @@ class Playlist(QtCore.QAbstractTableModel):
             fd.write("[playlist]\n")
             for i, path in enumerate(self.playlist):
                 i += 1
-                fd.write( "File%d=%s\n" % (i, path) )
-                fd.write( "Title%d=%s\n" % (i, self._parse_title(path)) )
+                fd.write( ("File%d=%s\n" % (i, path)).encode("utf-8") )
+                fd.write( ("Title%d=%s\n" % (i, self._parse_title(path))).encode("utf-8") )
                 fd.write( "\n" )
 
             fd.write("NumberOfEntries=%d\n" % len(self.playlist))
@@ -418,9 +418,9 @@ class Playlist(QtCore.QAbstractTableModel):
 
         elif index.column() == 0:
             if role == Qt.Qt.DisplayRole:
-                return self._parse_title(path).decode("utf-8")
+                return self._parse_title(path)
             elif role == Qt.Qt.UserRole:
-                return path.decode("utf-8")
+                return path
 
         elif index.column() == 1:
             if role == Qt.Qt.DisplayRole:
@@ -458,7 +458,7 @@ class Playlist(QtCore.QAbstractTableModel):
             row = parent.row()
         if data.hasUrls() and row != -1:
             for url in data.urls():
-                url = url.path().toLocal8Bit().data()
+                url = unicode(url.path())
                 if url in self:
                     self.move(row, url)
                 elif row < len(self):
@@ -645,6 +645,7 @@ if __name__ == '__main__':
 
     enqueue = getconf("enqueue") in (True, "True")
     for filename in posargs:
+        filename = filename.decode("utf-8")
         if enqueue:
             p.enqueue(filename)
         else:

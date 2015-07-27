@@ -185,7 +185,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.lstPlaylist.scrollTo( self.playlist.index( self.playlist.current ), QtGui.QAbstractItemView.PositionAtCenter )
 
     def onLibraryDoubleClicked(self, index):
-        self.playlist.append( self.library.filePath(index).toLocal8Bit().data() )
+        self.playlist.append( unicode(self.library.filePath(index)) )
 
     def onRemoveTriggered(self):
         index = self.lstPlaylist.selectedIndexes()[0]
@@ -296,6 +296,7 @@ if __name__ == '__main__':
 
     enqueue = getconf("enqueue") in (True, "True")
     for filename in posargs:
+        filename = filename.decode("utf-8")
         if enqueue:
             ply.playlist.enqueue(filename)
         else:

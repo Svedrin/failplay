@@ -62,7 +62,7 @@ class Decoder(object):
     """
 
     def __init__(self, fpath, want_samplerate=44100, want_samplefmt=AV_SAMPLE_FMT_S16):
-        self._decoder = LowLevelDecoder(fpath)
+        self._decoder = LowLevelDecoder(fpath.encode("utf-8"))
         self._buffer  = [""] * (self.channels if self.is_planar else 1)
         self._readbytes = 0
 
