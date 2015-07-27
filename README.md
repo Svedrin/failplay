@@ -28,7 +28,10 @@ FailPlay doesn't (and probably never will) have:
 FailAudio
 =========
 
-FailPlay also comes with a command-line player named failaudio, which has the same features (crossfade, queue) but is intended for more ad-hoc use.
+FailPlay also comes with a command-line player named `failaudio`, which has the same features (crossfade, queue) but is intended
+for more ad-hoc use.
+
+Note that unlike FailPlay, `failaudio` does *not* infinitely repeat its playlist, but plays it only once.
 
 Requirements
 ============
@@ -52,11 +55,11 @@ FailPlay doesn't really need much configuration, but setting a bit of stuff in /
     [environment]
     PULSE_SERVER = tcp:gatekeeper
 
-Variables in the`*[environment]` section will be exported before initializing audio output, so it can be used e.g. to
+Variables in the `[environment]` section will be exported before initializing audio output, so it can be used e.g. to
 connect to a remote PulseAudio server. The `options` section accepts the same variables that can also be given on the
 command line as long options.
 
-FailAudio supports a config file as well, and evaluates `~~/.failplay/failaudio.conf` in the same manner.
+FailAudio supports a config file as well, and evaluates `~/.failplay/failaudio.conf` in the same manner.
 
 
 Bugs
