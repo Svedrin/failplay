@@ -216,13 +216,11 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 		return NULL;
 	}
 	
-	if( (avfrm = avcodec_alloc_frame()) == NULL ){
+	if( (avfrm = av_frame_alloc()) == NULL ){
 		PyErr_SetString(FfmpegDecodeError, "out of memory");
 		av_free_packet(&avpkt);
 		return NULL;
 	}
-	
-	avcodec_get_frame_defaults(avfrm);
 	
 	got_frame = 0;
 	if( avcodec_decode_audio4(self->pCodecCtx, avfrm, &got_frame, &avpkt) < 0 || !got_frame ){
