@@ -39,9 +39,11 @@ class Source(QtCore.QObject):
         QtCore.QObject.__init__(self)
         self.path  = path
         self.fd    = Decoder(path)
-        self.gen   = None
         self.title = (path.rsplit( '/', 1 )[1] if "/" in path else path).rsplit('.', 1)[0]
         self.fd.dump_format()
+
+        self.in_gen   = self.fd.read()
+        self.out_gen  = self.data()
 
     def start(self):
         self.emit( Source.sig_start, self.path )
@@ -57,18 +59,13 @@ class Source(QtCore.QObject):
     def pos(self):
         return self.fd.position
 
-    @property
-    def _data(self):
-        for chunk in self.fd.read():
+    def data(self):
+        for chunk in self.in_gen:
             yield chunk[0]
         raise StopIteration
 
-    @property
-    def data(self):
-        if self.gen is None:
-            self.gen = self._data
-        return self.gen
-
+    def next(self):
+        return next(self.out_gen)
 
 class Playlist(QtCore.QAbstractTableModel):
     """ Playlist management object. """
@@ -526,7 +523,7 @@ class Player(QtCore.QObject, threading.Thread):
 
         while not self.shutdown:
             try:
-                srcdata = self.source.data.next()
+                srcdata = self.source.next()
             except StopIteration:
                 if not end_of_playlist:
                     self.source.stop()
@@ -566,7 +563,7 @@ class Player(QtCore.QObject, threading.Thread):
 
             else:
                 try:
-                    prevdata = prev.data.next()
+                    prevdata = prev.next()
                 except StopIteration:
                     #print "Old source done, leaving transition!"
                     self.emit(Player.sig_transition_end, prev, self.source)
