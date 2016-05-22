@@ -30,6 +30,7 @@ from myffmpeg.ffmpeg import Decoder
 import threading
 
 from ConfigParser import ConfigParser
+from Queue import Queue
 
 
 class Source(QtCore.QObject):
@@ -201,6 +202,22 @@ class Playlist(QtCore.QAbstractTableModel):
             self._emit_changed(prevpath)
         self._emit_changed(nextpath)
         return nextpath
+
+    def peek_next(self):
+        """ Get the song that is going to be played next. """
+        if not self.playlist:
+            return None
+        if self.stopafter is not None and self.current == self.stopafter:
+            return None
+        if self.repeat is not None and self.current == self.repeat:
+            return self.playlist[self.current]
+        elif self.jmpqueue:
+            return self.jmpqueue[0]
+        elif self.current is None or self.current == len(self.playlist) - 1:
+            # Not yet started or at end of list
+            return self.playlist[0]
+        else:
+            return self.playlist[self.current + 1]
 
     @property
     def current_index(self):
@@ -498,8 +515,28 @@ class Player(QtCore.QObject, threading.Thread):
         self.playlist = playlist
         self.shutdown = False
 
+        self.preloaded = False
+        self.preloader_queue   = Queue()
+
+        self.preloader_thread = threading.Thread(target=self.preloader)
+        self.preloader_thread.daemon = True
+        self.preloader_thread.start()
+
+    def preloader(self):
+        while True:
+            path = self.preloader_queue.get()
+            # This is fucking brutal but it works
+            with open(path, "rb") as fd:
+                fd.read(1024**2)
+
+    def preload(self):
+        if not self.preloaded:
+            self.preloaded = True
+            self.preloader_queue.put( self.playlist.peek_next() )
+
     def next(self):
         """ Create a source for the next item in the playlist. """
+        self.preloaded = False
         return Source( self.playlist.next() )
 
     def stop(self):
@@ -546,6 +583,10 @@ class Player(QtCore.QObject, threading.Thread):
             if prev is None:
                 self.pcm.play( srcdata )
                 self.emit(Player.sig_position_normal, self.source, srcdata)
+
+                if self.source.duration - self.source.pos - transearly <= transtime + 1 and not end_of_playlist:
+                    # We'll enter transition in a second, preload the next file.
+                    self.preload()
 
                 if self.source.duration - self.source.pos - transearly <= transtime and not end_of_playlist:
                     #print "Entering transition!"

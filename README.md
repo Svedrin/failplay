@@ -65,10 +65,3 @@ connect to a remote PulseAudio server. The `options` section accepts the same va
 command line as long options.
 
 FailAudio supports a config file as well, and evaluates `~/.failplay/failaudio.conf` in the same manner.
-
-
-Bugs
-====
-
-When loading the next song, the player might cause audible lag of about half a second, which kinda sucks hard. (I just
-found out that it doesn't happen when you have an SSD, though - so chances are this might not get fixed (by me). :P )
