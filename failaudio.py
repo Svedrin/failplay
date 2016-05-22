@@ -108,6 +108,8 @@ class Playlist(QtCore.QAbstractTableModel):
         self.beginInsertRows(QtCore.QModelIndex(), 0, len(files) - 1)
         for fileopt in files:
             path = pls.get("playlist", fileopt).decode("utf-8")
+            if not exists(path):
+                print "Input file '%s' does not exist! Adding it anyway though." % path
             self.playlist.append(path)
             self.emit(Playlist.sig_append, path)
         self.endInsertRows()
@@ -198,6 +200,11 @@ class Playlist(QtCore.QAbstractTableModel):
             self.current += 1
 
         nextpath = self.playlist[self.current]
+
+        if not exists(nextpath):
+            # skip
+            return self.next()
+
         if prevpath is not None and prevpath != nextpath: # don't emit twice on repeat
             self._emit_changed(prevpath)
         self._emit_changed(nextpath)
@@ -525,6 +532,8 @@ class Player(QtCore.QObject, threading.Thread):
     def preloader(self):
         while True:
             path = self.preloader_queue.get()
+            if not exists(path):
+                continue
             # This is fucking brutal but it works
             with open(path, "rb") as fd:
                 fd.read(1024**2)
