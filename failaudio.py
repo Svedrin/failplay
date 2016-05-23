@@ -43,6 +43,13 @@ class Source(QtCore.QObject):
         self.title = (path.rsplit( '/', 1 )[1] if "/" in path else path).rsplit('.', 1)[0]
         self.fd.dump_format()
 
+        if "replaygain_track_gain" in self.fd.metadata:
+            self.gain_db  = float( self.fd.metadata["replaygain_track_gain"].split()[0] )
+            self.gain_fac = 10 ** (self.gain_db/10.)
+            print "ReplayGain: %fdB = %f Gain" % (self.gain_db, self.gain_fac)
+        else:
+            self.gain_fac = 1
+
         self.in_gen   = self.fd.read()
         self.out_gen  = self.data()
 
@@ -62,7 +69,10 @@ class Source(QtCore.QObject):
 
     def data(self):
         for chunk in self.in_gen:
-            yield chunk[0]
+            if self.gain_fac == 1:
+                yield chunk[0]
+            else:
+                yield audioop.mul( chunk[0], 2, self.gain_fac )
         raise StopIteration
 
     def next(self):
