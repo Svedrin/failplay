@@ -551,7 +551,9 @@ class Player(QtCore.QObject, threading.Thread):
     def preload(self):
         if not self.preloaded:
             self.preloaded = True
-            self.preloader_queue.put( self.playlist.peek_next() )
+            nextpath = self.playlist.peek_next()
+            if nextpath is not None:
+                self.preloader_queue.put( nextpath )
 
     def next(self):
         """ Create a source for the next item in the playlist. """
