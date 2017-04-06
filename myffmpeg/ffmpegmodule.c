@@ -218,7 +218,7 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 	
 	if( (avfrm = av_frame_alloc()) == NULL ){
 		PyErr_SetString(FfmpegDecodeError, "out of memory");
-		av_free_packet(&avpkt);
+		av_packet_unref(&avpkt);
 		return NULL;
 	}
 	
@@ -243,7 +243,7 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 		}
 	}
 	
-	av_free_packet(&avpkt);
+	av_packet_unref(&avpkt);
 	av_free(avfrm);
 	
 	return ret;
