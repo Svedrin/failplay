@@ -22,22 +22,20 @@ import re
 
 from datetime import timedelta
 from optparse import OptionParser
-from ConfigParser import ConfigParser
+from configparser import ConfigParser
 
-from PyQt4 import Qt
-from PyQt4 import QtCore
-from PyQt4 import QtGui
+from PyQt5 import Qt, QtCore, QtGui, QtWidgets
 
 from failaudio   import Playlist, Player
 from ui_failplay import Ui_MainWindow
 
 
 def mkIcon():
-    data = ""
+    data = b""
     for y in range(16):
         for x in range(16):
-            v = (abs((8-y)/8.) <= abs(-(1/3.) * (x-8)/8. + (1/3.))) * 0xFF
-            data += struct.pack( "BBB", v, v, v )
+            v = int((abs((8-y)/8.) <= abs(-(1/3.) * (x-8)/8. + (1/3.))) * 0xFF)
+            data += struct.pack("BBB", v, v, v)
     img = QtGui.QImage(data, 16, 16, QtGui.QImage.Format_RGB888)
     pm = QtGui.QPixmap()
     pm.convertFromImage(img)
@@ -45,9 +43,9 @@ def mkIcon():
 
 
 
-class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
+class FailPlay(Ui_MainWindow, QtWidgets.QMainWindow):
     def __init__(self, outdev, librarydir=os.environ["HOME"]):
-        QtGui.QMainWindow.__init__(self)
+        QtWidgets.QMainWindow.__init__(self)
         Ui_MainWindow.__init__(self)
 
         self.playlist = Playlist()
@@ -55,13 +53,13 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
         self.setupUi(self)
 
-        self.connect( self.player, Player.sig_started, self.onPlayerStarted )
-        self.connect( self.player, Player.sig_stopped, self.close )
+        self.player.sig_started.connect(lambda src: self.onPlayerStarted())
+        self.player.sig_stopped.connect(lambda msg: self.close())
 
-        self.connect( self.player, Player.sig_position_normal, self.onPlayerPositionNormal )
-        self.connect( self.player, Player.sig_position_trans,  self.onPlayerPositionTrans  )
+        self.player.sig_position_normal.connect(self.onPlayerPositionNormal)
+        self.player.sig_position_trans.connect(self.onPlayerPositionTrans)
 
-        self.library = QtGui.QFileSystemModel()
+        self.library = QtWidgets.QFileSystemModel()
         self.library.setRootPath(librarydir)
         self.lstLibrary.setModel(self.library)
         self.lstLibrary.setRootIndex(self.library.index(librarydir))
@@ -69,56 +67,56 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
         self.lstLibrary.hideColumn(2)
         self.lstLibrary.hideColumn(3)
 
-        self.connect( self.playlist,        Playlist.sig_datachg,                        self.onPlaylistChanged       )
-        self.connect( self.leLibraryFilter, QtCore.SIGNAL("textEdited(QString)"),        self.onFilterEdited          )
-        self.connect( self.lstLibrary,      QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.onLibraryDoubleClicked  )
-        self.connect( self.lstPlaylist,     QtCore.SIGNAL("doubleClicked(QModelIndex)"), self.onPlaylistDoubleClicked )
+        self.playlist.sig_datachg.connect(self.onPlaylistChanged)
+        self.leLibraryFilter.textEdited.connect(self.onFilterEdited)
+        self.lstLibrary.doubleClicked.connect(self.onLibraryDoubleClicked)
+        self.lstPlaylist.doubleClicked.connect(self.onPlaylistDoubleClicked)
 
         self.playlist.currentBg = QtGui.QBrush(Qt.Qt.cyan, Qt.Qt.SolidPattern)
         self.lstPlaylist.setModel(self.playlist)
 
         hderp = self.lstPlaylist.horizontalHeader()
-        hderp.setResizeMode(0, QtGui.QHeaderView.Stretch)
+        hderp.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
         hderp.resizeSection(1, 50)
-        hderp.setResizeMode(1, QtGui.QHeaderView.Fixed)
+        hderp.setSectionResizeMode(1, QtWidgets.QHeaderView.Fixed)
         self.lstPlaylist.setHorizontalHeader(hderp)
 
         # build playlist context menu
-        self.actRemove = QtGui.QAction("Remove", self.lstPlaylist)
-        self.connect( self.actRemove, QtCore.SIGNAL("triggered(bool)"), self.onRemoveTriggered)
+        self.actRemove = QtWidgets.QAction("Remove", self.lstPlaylist)
+        self.actRemove.triggered.connect(lambda checked: self.onRemoveTriggered())
         self.actRemove.setShortcut(Qt.Qt.Key_Delete)
         self.lstPlaylist.insertAction(None, self.actRemove)
 
-        self.actEnqueue = QtGui.QAction("Enqueue", self.lstPlaylist)
-        self.connect( self.actEnqueue, QtCore.SIGNAL("triggered(bool)"), self.onEnqueueTriggered)
+        self.actEnqueue = QtWidgets.QAction("Enqueue", self.lstPlaylist)
+        self.actEnqueue.triggered.connect(lambda checked: self.onEnqueueTriggered())
         self.actEnqueue.setShortcut(Qt.Qt.Key_Plus)
         self.lstPlaylist.insertAction(None, self.actEnqueue)
 
-        self.actDequeue = QtGui.QAction("Dequeue", self.lstPlaylist)
-        self.connect( self.actDequeue, QtCore.SIGNAL("triggered(bool)"), self.onDequeueTriggered)
+        self.actDequeue = QtWidgets.QAction("Dequeue", self.lstPlaylist)
+        self.actDequeue.triggered.connect(lambda checked: self.onDequeueTriggered())
         self.actDequeue.setShortcut(Qt.Qt.Key_Minus)
         self.lstPlaylist.insertAction(None, self.actDequeue)
 
-        self.actRepeat = QtGui.QAction("Repeat", self.lstPlaylist)
-        self.connect( self.actRepeat, QtCore.SIGNAL("triggered(bool)"), self.onRepeatTriggered)
+        self.actRepeat = QtWidgets.QAction("Repeat", self.lstPlaylist)
+        self.actRepeat.triggered.connect(lambda checked: self.onRepeatTriggered())
         self.actRepeat.setShortcut(Qt.Qt.Key_R)
         self.lstPlaylist.insertAction(None, self.actRepeat)
 
-        self.actStopAfter = QtGui.QAction("Stop after this track", self.lstPlaylist)
-        self.connect( self.actStopAfter, QtCore.SIGNAL("triggered(bool)"), self.onStopAfterTriggered)
+        self.actStopAfter = QtWidgets.QAction("Stop after this track", self.lstPlaylist)
+        self.actStopAfter.triggered.connect(lambda checked: self.onStopAfterTriggered())
         self.actStopAfter.setShortcut(Qt.Qt.Key_S)
         self.lstPlaylist.insertAction(None, self.actStopAfter)
 
         def mkShortcut(key, callback):
-            shortcut = QtGui.QShortcut(QtGui.QKeySequence(key), self)
+            shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(key), self)
             shortcut.setContext(Qt.Qt.ApplicationShortcut)
-            self.connect( shortcut, QtCore.SIGNAL("activated()"), callback )
+            shortcut.activated.connect(callback)
             return shortcut
 
-        self.shortcutSpace   = mkShortcut(Qt.Qt.Key_Space,  self.onSpacePressed)
-        self.shortcutEnd     = mkShortcut(Qt.Qt.Key_End,    self.onEndPressed)
-        self.shortcutEsc     = mkShortcut(Qt.Qt.Key_Escape, self.onEscPressed)
-        self.shortcutQuit    = mkShortcut(Qt.Qt.Key_Q,      self.close)
+        self.shortcutSpace = mkShortcut(Qt.Qt.Key_Space,  self.onSpacePressed)
+        self.shortcutEnd   = mkShortcut(Qt.Qt.Key_End,    self.onEndPressed)
+        self.shortcutEsc   = mkShortcut(Qt.Qt.Key_Escape, self.onEscPressed)
+        self.shortcutQuit  = mkShortcut(Qt.Qt.Key_Q,      self.close)
 
         self.setWindowIcon(mkIcon())
 
@@ -152,8 +150,8 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def onPlaylistDoubleClicked(self, index):
         """ Toggle repeat if currently playing track is doubleclicked, en/dequeue otherwise. """
         if index.row() == self.playlist.current:
-            return self.playlist.toggleRepeat( self.playlist[ self.playlist.current ] )
-        self.playlist.toggleQueue( self.playlist[index] )
+            return self.playlist.toggleRepeat(self.playlist[self.playlist.current])
+        self.playlist.toggleQueue(self.playlist[index])
 
     def onSpacePressed(self):
         """ Toggle repeat if currently playing track or none is selected, en/dequeue otherwise. """
@@ -164,7 +162,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
     def onEndPressed(self):
         """ Toggle stopAfter on the selected track or the current one if none is selected. """
         self.save_selection()
-        self.playlist.toggleStopAfter( self.playlist[self.selected_or_current_index] )
+        self.playlist.toggleStopAfter(self.playlist[self.selected_or_current_index])
         self.restore_selection()
 
     def onEscPressed(self):
@@ -182,38 +180,38 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             self.lstLibrary.collapseAll()
 
     def onPlayerStarted(self):
-        self.lstPlaylist.scrollTo( self.playlist.index( self.playlist.current ), QtGui.QAbstractItemView.PositionAtCenter )
+        self.lstPlaylist.scrollTo(self.playlist.index(self.playlist.current), QtWidgets.QAbstractItemView.PositionAtCenter)
 
     def onLibraryDoubleClicked(self, index):
-        self.playlist.append( unicode(self.library.filePath(index)) )
+        self.playlist.append(self.library.filePath(index))
 
     def onRemoveTriggered(self):
         index = self.lstPlaylist.selectedIndexes()[0]
-        self.playlist.remove( self.playlist[index] )
+        self.playlist.remove(self.playlist[index])
 
     def onEnqueueTriggered(self):
         index = self.lstPlaylist.selectedIndexes()[0]
-        self.playlist.enqueue( self.playlist[index] )
+        self.playlist.enqueue(self.playlist[index])
 
     def onDequeueTriggered(self):
         index = self.lstPlaylist.selectedIndexes()[0]
-        self.playlist.dequeue( self.playlist[index] )
+        self.playlist.dequeue(self.playlist[index])
 
     def onRepeatTriggered(self):
         index = self.lstPlaylist.selectedIndexes()[0]
-        self.playlist.toggleRepeat( self.playlist[index] )
+        self.playlist.toggleRepeat(self.playlist[index])
 
     def onStopAfterTriggered(self):
         index = self.lstPlaylist.selectedIndexes()[0]
-        self.playlist.toggleStopAfter( self.playlist[index] )
+        self.playlist.toggleStopAfter(self.playlist[index])
 
     def closeEvent(self, ev):
         self.player.stop()
-        QtGui.QMainWindow.closeEvent(self, ev)
+        QtWidgets.QMainWindow.closeEvent(self, ev)
 
     def _status_update(self, progressbar, source):
-        progressbar.setMaximum(source.duration)
-        progressbar.setValue(source.pos)
+        progressbar.setMaximum(int(source.duration))
+        progressbar.setValue(int(source.pos))
         # see if the title is "asd - sdf (some stuff)", and if so, strip the parens
         match = self.titleregex.match(source.title)
         if match is None:
@@ -222,7 +220,7 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
             title = match.group("title")
         # Let's abuse setFormat() a little, shall we?
         progressbar.setFormat(
-            u"%s — %s (%s)" % (title, timedelta(seconds=int(source.pos)), timedelta(seconds=int(source.duration)))
+            "%s \u2014 %s (%s)" % (title, timedelta(seconds=int(source.pos)), timedelta(seconds=int(source.duration)))
             )
 
     def onPlayerPositionNormal(self, source, srcdata):
@@ -263,13 +261,13 @@ class FailPlay(Ui_MainWindow, QtGui.QMainWindow ):
 
 if __name__ == '__main__':
     parser = OptionParser(usage="%prog [options] [<file> ...]\n")
-    parser.add_option( "-o", "--out", default=None,
+    parser.add_option("-o", "--out", default=None,
         help="Audio output device. See http://xiph.org/ao/doc/ for supported drivers. Defaults to pulse."
         )
-    parser.add_option( "-d", "--musicdir", help="Library directory", default=None)
-    parser.add_option( "-q", "--enqueue",  help="Enqueue the tracks named on the command line.", action="store_true", default=None)
-    parser.add_option( "-p", "--playlist", help="A file to initialize the playlist from.", default=None)
-    parser.add_option( "-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.", default=None)
+    parser.add_option("-d", "--musicdir", help="Library directory", default=None)
+    parser.add_option("-q", "--enqueue",  help="Enqueue the tracks named on the command line.", action="store_true", default=None)
+    parser.add_option("-p", "--playlist", help="A file to initialize the playlist from.", default=None)
+    parser.add_option("-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.", default=None)
     options, posargs = parser.parse_args()
 
     conf = ConfigParser()
@@ -286,17 +284,16 @@ if __name__ == '__main__':
             return conf.get("options", value)
         return default
 
-    app = QtGui.QApplication( sys.argv )
+    app = QtWidgets.QApplication(sys.argv)
     ply = FailPlay(getconf("out", "pulse"), getconf("musicdir", os.environ["HOME"]))
 
     playlistfile = getconf("playlist")
     if playlistfile:
-        print "Loading playlist from", playlistfile
+        print("Loading playlist from", playlistfile)
         ply.playlist.loadpls(playlistfile)
 
     enqueue = getconf("enqueue") in (True, "True")
     for filename in posargs:
-        filename = filename.decode("utf-8")
         if enqueue:
             ply.playlist.enqueue(filename)
         else:
@@ -309,5 +306,5 @@ if __name__ == '__main__':
 
     playlistfile = getconf("writepls")
     if playlistfile:
-        print "Saving playlist to", playlistfile
+        print("Saving playlist to", playlistfile)
         ply.playlist.writepls(playlistfile)

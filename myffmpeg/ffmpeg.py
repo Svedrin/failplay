@@ -16,7 +16,7 @@
  *  GNU General Public License for more details.
 """
 
-from _ffmpeg import Decoder as LowLevelDecoder, Resampler, \
+from ._ffmpeg import Decoder as LowLevelDecoder, Resampler, \
                     DecodeError, FileError, ResampleError, \
                     get_bytes_per_sample, get_sample_fmt_name, \
                     AV_SAMPLE_FMT_NONE, \
@@ -62,8 +62,8 @@ class Decoder(object):
     """
 
     def __init__(self, fpath, want_samplerate=44100, want_samplefmt=AV_SAMPLE_FMT_S16):
-        self._decoder = LowLevelDecoder(fpath.encode("utf-8"))
-        self._buffer  = [""] * (self.channels if self.is_planar else 1)
+        self._decoder = LowLevelDecoder(fpath)
+        self._buffer  = [b""] * (self.channels if self.is_planar else 1)
         self._readbytes = 0
 
         if self.samplerate != want_samplerate or self.samplefmt != want_samplefmt:
@@ -94,10 +94,10 @@ class Decoder(object):
         # this mono stuff sucks horribly...
         return self._readbytes / float(self.samplerate * 2 * get_bytes_per_sample(self.samplefmt))
 
-    def read(self, bytes=4096):
-        """ Get chunks of exactly ``bytes`` length. """
+    def read(self, chunk_size=4096):
+        """ Get chunks of exactly ``chunk_size`` bytes. """
         while True:
-            while len(self._buffer[0]) < bytes:
+            while len(self._buffer[0]) < chunk_size:
                 try:
                     data = self._decoder.read()
                     if self.channels == 1:
@@ -106,15 +106,15 @@ class Decoder(object):
                     if self.resampler is not None:
                         data = self.resampler.resample(data)
                 except StopIteration:
-                    if self._buffer:
+                    if self._buffer[0]:
                         yield tuple(self._buffer)
-                    raise StopIteration
-                except DecodeError, err:
+                    return
+                except DecodeError as err:
                     # Ignore DecodeErrors at the very beginning of the file
                     if self._readbytes or self.duration == 0:
-                        raise err
+                        raise
                     else:
-                        print "Ignoring DecodeError %s in file %s" % (err.message, self.path)
+                        print("Ignoring DecodeError %s in file %s" % (str(err), self.path))
                 else:
                     for idx, channeldata in enumerate(data):
                         self._buffer[idx] += channeldata
@@ -122,8 +122,8 @@ class Decoder(object):
 
             ret = []
             for idx, channeldata in enumerate(self._buffer):
-                ret.append(channeldata[:bytes])
-                self._buffer[idx] = channeldata[bytes:]
+                ret.append(channeldata[:chunk_size])
+                self._buffer[idx] = channeldata[chunk_size:]
 
             yield tuple(ret)
 

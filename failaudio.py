@@ -21,32 +21,32 @@ import sys
 from os.path import exists
 from shutil import copyfile
 
-from PyQt4 import Qt
-from PyQt4 import QtCore
+from PyQt5 import Qt, QtCore
+from PyQt5.QtCore import pyqtSignal
 
 import audioop
 import ao
 from myffmpeg.ffmpeg import Decoder
 import threading
 
-from ConfigParser import ConfigParser
-from Queue import Queue
+from configparser import ConfigParser
+from queue import Queue
 
 
 class Source(QtCore.QObject):
-    sig_start  = QtCore.SIGNAL( 'start(const QString)' )
+    sig_start = pyqtSignal(str)
 
     def __init__(self, path):
         QtCore.QObject.__init__(self)
         self.path  = path
         self.fd    = Decoder(path)
-        self.title = (path.rsplit( '/', 1 )[1] if "/" in path else path).rsplit('.', 1)[0]
+        self.title = (path.rsplit('/', 1)[1] if "/" in path else path).rsplit('.', 1)[0]
         self.fd.dump_format()
 
         if "replaygain_track_gain" in self.fd.metadata:
-            self.gain_db  = float( self.fd.metadata["replaygain_track_gain"].split()[0] )
-            self.gain_fac = 10 ** (self.gain_db/10.)
-            print "ReplayGain: %fdB = %f Gain" % (self.gain_db, self.gain_fac)
+            self.gain_db  = float(self.fd.metadata["replaygain_track_gain"].split()[0])
+            self.gain_fac = 10 ** (self.gain_db / 10.)
+            print("ReplayGain: %fdB = %f Gain" % (self.gain_db, self.gain_fac))
         else:
             self.gain_fac = 1
 
@@ -54,7 +54,7 @@ class Source(QtCore.QObject):
         self.out_gen  = self.data()
 
     def start(self):
-        self.emit( Source.sig_start, self.path )
+        self.sig_start.emit(self.path)
 
     def stop(self):
         pass
@@ -72,8 +72,7 @@ class Source(QtCore.QObject):
             if self.gain_fac == 1:
                 yield chunk[0]
             else:
-                yield audioop.mul( chunk[0], 2, self.gain_fac )
-        raise StopIteration
+                yield audioop.mul(chunk[0], 2, self.gain_fac)
 
     def next(self):
         return next(self.out_gen)
@@ -81,12 +80,12 @@ class Source(QtCore.QObject):
 class Playlist(QtCore.QAbstractTableModel):
     """ Playlist management object. """
 
-    sig_append  = QtCore.SIGNAL( 'append(const QString)' )
-    sig_insert  = QtCore.SIGNAL( 'insert(const int, const QString)' )
-    sig_remove  = QtCore.SIGNAL( 'remove(const QString)' )
-    sig_enqueue = QtCore.SIGNAL( 'enqueue(const QString)' )
-    sig_dequeue = QtCore.SIGNAL( 'dequeue(const QString)' )
-    sig_datachg = QtCore.SIGNAL( 'dataChanged (const QModelIndex, const QModelIndex)' )
+    sig_append  = pyqtSignal(str)
+    sig_insert  = pyqtSignal(int, str)
+    sig_remove  = pyqtSignal(str)
+    sig_enqueue = pyqtSignal(str)
+    sig_dequeue = pyqtSignal(str)
+    sig_datachg = pyqtSignal(QtCore.QModelIndex, QtCore.QModelIndex)
 
     def __init__(self):
         QtCore.QObject.__init__(self)
@@ -114,14 +113,14 @@ class Playlist(QtCore.QAbstractTableModel):
         self.repeat    = None
 
         files = [opt for opt in pls.options("playlist") if opt.startswith("file")]
-        files.sort( cmp=lambda a, b: cmp(int(a[4:]), int(b[4:])) ) # sort numerically by FileXY
+        files.sort(key=lambda x: int(x[4:]))  # sort numerically by FileXY
         self.beginInsertRows(QtCore.QModelIndex(), 0, len(files) - 1)
         for fileopt in files:
-            path = pls.get("playlist", fileopt).decode("utf-8")
+            path = pls.get("playlist", fileopt)
             if not exists(path):
-                print "Input file '%s' does not exist! Adding it anyway though." % path
+                print("Input file '%s' does not exist! Adding it anyway though." % path)
             self.playlist.append(path)
-            self.emit(Playlist.sig_append, path)
+            self.sig_append.emit(path)
         self.endInsertRows()
 
         if pls.has_section("failplay"):
@@ -143,7 +142,7 @@ class Playlist(QtCore.QAbstractTableModel):
             if pls.has_option("failplay", "queue"):
                 queuestr = pls.get("failplay", "queue").strip()
                 if queuestr:
-                    self.jmpqueue  = [ self.playlist[int(idx) - 1] for idx in queuestr.split(' ') ]
+                    self.jmpqueue = [self.playlist[int(idx) - 1] for idx in queuestr.split(' ')]
 
         self.playlist_dirty = False
         self.jmpqueue_dirty = False
@@ -151,20 +150,19 @@ class Playlist(QtCore.QAbstractTableModel):
 
     def writepls(self, fpath):
         """ Write the current playlist to a file in .pls format. """
-        if exists( fpath ):
-            copyfile( fpath, fpath+'~' )
-        fd = open(fpath, "wb")
-        try:
+        if exists(fpath):
+            copyfile(fpath, fpath + '~')
+        with open(fpath, "w", encoding="utf-8") as fd:
             fd.write("[playlist]\n")
             for i, path in enumerate(self.playlist):
                 i += 1
-                fd.write( ("File%d=%s\n" % (i, path)).encode("utf-8") )
-                fd.write( ("Title%d=%s\n" % (i, self._parse_title(path))).encode("utf-8") )
-                fd.write( "\n" )
+                fd.write("File%d=%s\n" % (i, path))
+                fd.write("Title%d=%s\n" % (i, self._parse_title(path)))
+                fd.write("\n")
 
             fd.write("NumberOfEntries=%d\n" % len(self.playlist))
             fd.write("Version=2\n")
-            fd.write( "\n" )
+            fd.write("\n")
 
             def intOrNone(something):
                 if something is None:
@@ -175,12 +173,10 @@ class Playlist(QtCore.QAbstractTableModel):
             fd.write("StopAfter=%s\n" % intOrNone(self.stopafter))
             fd.write("Repeat=%s\n"    % intOrNone(self.repeat))
             fd.write("Current=%s\n"   % intOrNone(self.current))
-            fd.write("Queue=%s\n"     % ' '.join([ str(self.playlist.index(path) + 1) for path in self.jmpqueue ]))
+            fd.write("Queue=%s\n"     % ' '.join([str(self.playlist.index(path) + 1) for path in self.jmpqueue]))
 
             self.playlist_dirty = False
             self.jmpqueue_dirty = False
-        finally:
-            fd.close()
 
         return self
 
@@ -201,7 +197,7 @@ class Playlist(QtCore.QAbstractTableModel):
         elif self.jmpqueue:
             self.jmpqueue_dirty = True
             path = self.jmpqueue.pop(0)
-            self.emit(Playlist.sig_dequeue, path)
+            self.sig_dequeue.emit(path)
             self.current = self.playlist.index(path)
         elif self.current is None or self.current == len(self.playlist) - 1:
             # Not yet started or at end of list
@@ -215,7 +211,7 @@ class Playlist(QtCore.QAbstractTableModel):
             # skip
             return self.next()
 
-        if prevpath is not None and prevpath != nextpath: # don't emit twice on repeat
+        if prevpath is not None and prevpath != nextpath:  # don't emit twice on repeat
             self._emit_changed(prevpath)
         self._emit_changed(nextpath)
         return nextpath
@@ -251,7 +247,7 @@ class Playlist(QtCore.QAbstractTableModel):
         return self.playlist[self.current]
 
     def _parse_title(self, path):
-        return path.rsplit( '/', 1 )[1].rsplit('.', 1)[0]
+        return path.rsplit('/', 1)[1].rsplit('.', 1)[0]
 
     @property
     def title(self):
@@ -270,28 +266,30 @@ class Playlist(QtCore.QAbstractTableModel):
             self.playlist_dirty = True
             self.playlist.append(path)
             self.endInsertRows()
-            self.emit(Playlist.sig_append, path)
+            self.sig_append.emit(path)
         return self
 
     def _remove(self, path):
         idx = self.playlist.index(path)
-        if idx <= self.current:
+        if self.current is not None and idx <= self.current:
             if self.current > 0:
                 self.current -= 1
             else:
                 self.current = None
-        if idx == self.repeat:
-            self.repeat = None
-        elif idx < self.repeat:
-            self.repeat -= 1
-        if idx == self.stopafter:
-            self.stopafter = None
-        elif idx < self.stopafter:
-            self.stopafter -= 1
+        if self.repeat is not None:
+            if idx == self.repeat:
+                self.repeat = None
+            elif idx < self.repeat:
+                self.repeat -= 1
+        if self.stopafter is not None:
+            if idx == self.stopafter:
+                self.stopafter = None
+            elif idx < self.stopafter:
+                self.stopafter -= 1
 
         self.playlist_dirty = True
         self.playlist.remove(path)
-        self.emit(Playlist.sig_remove, path)
+        self.sig_remove.emit(path)
 
     def remove(self, path):
         """ Remove a file from the playlist.
@@ -309,12 +307,12 @@ class Playlist(QtCore.QAbstractTableModel):
     def _insert(self, index, path):
         self.playlist_dirty = True
         self.playlist.insert(index, path)
-        self.emit(Playlist.sig_insert, index, path)
-        if index <= self.current:
+        self.sig_insert.emit(index, path)
+        if self.current is not None and index <= self.current:
             self.current += 1
-        if index <= self.repeat:
+        if self.repeat is not None and index <= self.repeat:
             self.repeat += 1
-        if index <= self.stopafter:
+        if self.stopafter is not None and index <= self.stopafter:
             self.stopafter += 1
 
     def insert(self, index, path):
@@ -349,7 +347,7 @@ class Playlist(QtCore.QAbstractTableModel):
         if path not in self.jmpqueue:
             self.jmpqueue_dirty = True
             self.jmpqueue.append(path)
-            self.emit(Playlist.sig_enqueue, path)
+            self.sig_enqueue.emit(path)
             self._emit_changed(path)
         return self
 
@@ -358,10 +356,9 @@ class Playlist(QtCore.QAbstractTableModel):
         if path in self.jmpqueue:
             self.jmpqueue_dirty = True
             self.jmpqueue.remove(path)
-            self.emit(Playlist.sig_dequeue, path)
+            self.sig_dequeue.emit(path)
             self._emit_changed(path)
         return self
-
 
     def toggleQueue(self, path):
         if path in self.jmpqueue:
@@ -377,7 +374,7 @@ class Playlist(QtCore.QAbstractTableModel):
             oldidx = self.repeat
             self.repeat = idx
             if oldidx is not None:
-                self._emit_changed( self.playlist[oldidx] )
+                self._emit_changed(self.playlist[oldidx])
         self._emit_changed(path)
 
     def toggleStopAfter(self, path):
@@ -388,10 +385,10 @@ class Playlist(QtCore.QAbstractTableModel):
             oldidx = self.stopafter
             self.stopafter = idx
             if oldidx is not None:
-                self._emit_changed( self.playlist[oldidx] )
+                self._emit_changed(self.playlist[oldidx])
         self._emit_changed(path)
 
-    def headerData(self, section, orientation, role):
+    def headerData(self, section, orientation, role=Qt.Qt.DisplayRole):
         if role != Qt.Qt.DisplayRole:
             return None
 
@@ -400,9 +397,8 @@ class Playlist(QtCore.QAbstractTableModel):
                 return "Track"
             elif section == 1:
                 return "Flags"
-
         else:
-            return unicode(section + 1)
+            return str(section + 1)
 
     @property
     def qlen(self):
@@ -418,13 +414,16 @@ class Playlist(QtCore.QAbstractTableModel):
     def __iter__(self):
         """ Iterate over the playlist. """
         while True:
-            yield self.next()
+            try:
+                yield self.next()
+            except StopIteration:
+                return
 
 
     # QAbstractTableModel methods
     def _emit_changed(self, path):
         idx = self.index(path, 1)
-        self.emit( self.sig_datachg, idx, idx )
+        self.sig_datachg.emit(idx, idx)
 
     def __getitem__(self, index):
         """ Return the path of the title at <index>. Index may be an int or a QModelIndex. """
@@ -433,14 +432,15 @@ class Playlist(QtCore.QAbstractTableModel):
         return self.playlist[index]
 
     def index(self, path_or_index, column=0, parent=QtCore.QModelIndex()):
-        if isinstance( path_or_index, int ):
+        if isinstance(path_or_index, int):
             return QtCore.QAbstractTableModel.index(self, path_or_index, column, parent)
 
         idx = self.playlist.index(path_or_index)
         return QtCore.QAbstractTableModel.index(self, idx, 0, QtCore.QModelIndex())
 
-
-    def data(self, index, role):
+    def data(self, index, role=Qt.Qt.DisplayRole):
+        if not index.isValid():
+            return None
         path = self.playlist[index.row()]
 
         if role == Qt.Qt.BackgroundRole:
@@ -457,19 +457,20 @@ class Playlist(QtCore.QAbstractTableModel):
             if role == Qt.Qt.DisplayRole:
                 modifiers = []
                 if path in self.jmpqueue:
-                    modifiers.append( unicode(self.jmpqueue.index(path) + 1) )
+                    modifiers.append(str(self.jmpqueue.index(path) + 1))
                 if index.row() == self.repeat:
-                    modifiers.append( u'♻' )
+                    modifiers.append('\u267b')  # ♻
                 if index.row() == self.stopafter:
-                    # http://www.decodeunicode.org/de/geometric_shapes
-                    modifiers.append( u'◾' ) #■◾◼
+                    modifiers.append('\u25fe')  # ◾
                 return ''.join(modifiers)
 
-    def columnCount(self, parent):
+        return None
+
+    def columnCount(self, parent=QtCore.QModelIndex()):
         return 2
 
-    def rowCount(self, parent):
-        if parent != QtCore.QModelIndex():
+    def rowCount(self, parent=QtCore.QModelIndex()):
+        if parent.isValid():
             return 0
         return len(self)
 
@@ -477,7 +478,7 @@ class Playlist(QtCore.QAbstractTableModel):
         return Qt.Qt.MoveAction
 
     def supportedDropActions(self):
-        return Qt.Qt.CopyAction|Qt.Qt.MoveAction
+        return Qt.Qt.CopyAction | Qt.Qt.MoveAction
 
     def mimeTypes(self):
         return ["text/uri-list"]
@@ -489,7 +490,7 @@ class Playlist(QtCore.QAbstractTableModel):
             row = parent.row()
         if data.hasUrls() and row != -1:
             for url in data.urls():
-                url = unicode(url.path())
+                url = url.path()
                 if url in self:
                     self.move(row, url)
                 elif row < len(self):
@@ -502,7 +503,7 @@ class Playlist(QtCore.QAbstractTableModel):
 
     def mimeData(self, index):
         data = QtCore.QMimeData()
-        data.setUrls([ QtCore.QUrl(self[ index[0] ]) ])
+        data.setUrls([QtCore.QUrl(self[index[0]])])
         return data
 
     def flags(self, index):
@@ -514,26 +515,25 @@ class Playlist(QtCore.QAbstractTableModel):
 
 
 
-class Player(QtCore.QObject, threading.Thread):
-    sig_transition_start = QtCore.SIGNAL( 'transition_start(const PyQt_PyObject, const PyQt_PyObject)' )
-    sig_transition_end   = QtCore.SIGNAL( 'transition_start(const PyQt_PyObject, const PyQt_PyObject)' )
+class Player(QtCore.QThread):
+    sig_transition_start = pyqtSignal(object, object)
+    sig_transition_end   = pyqtSignal(object, object)
 
-    sig_position_normal  = QtCore.SIGNAL( 'position_normal(const PyQt_PyObject, const QByteArray)' )
-    sig_position_trans   = QtCore.SIGNAL( 'position_trans(const PyQt_PyObject, const PyQt_PyObject, const float, const QString, const QByteArray)' )
+    sig_position_normal  = pyqtSignal(object, object)
+    sig_position_trans   = pyqtSignal(object, object, float, object, object)
 
-    sig_started          = QtCore.SIGNAL( 'started(const PyQt_PyObject)' )
-    sig_stopped          = QtCore.SIGNAL( 'stopped(const QString)' )
+    sig_started          = pyqtSignal(object)
+    sig_stopped          = pyqtSignal(str)
 
     def __init__(self, pcm, playlist):
-        threading.Thread.__init__(self)
-        QtCore.QObject.__init__(self)
+        QtCore.QThread.__init__(self)
         self.pcm      = ao.AudioDevice(pcm)
         self.source   = None
         self.playlist = playlist
         self.shutdown = False
 
         self.preloaded = False
-        self.preloader_queue   = Queue()
+        self.preloader_queue = Queue()
 
         self.preloader_thread = threading.Thread(target=self.preloader)
         self.preloader_thread.daemon = True
@@ -553,31 +553,31 @@ class Player(QtCore.QObject, threading.Thread):
             self.preloaded = True
             nextpath = self.playlist.peek_next()
             if nextpath is not None:
-                self.preloader_queue.put( nextpath )
+                self.preloader_queue.put(nextpath)
 
     def next(self):
         """ Create a source for the next item in the playlist. """
         self.preloaded = False
-        return Source( self.playlist.next() )
+        return Source(self.playlist.next())
 
     def stop(self):
         self.shutdown = True
 
     def run(self):
-        transtime  = 6.0 # crossfade of 6 seconds...
-        transearly = 1.4 # that starts a bit early because many tracks have tons of silence at the end
+        transtime  = 6.0  # crossfade of 6 seconds...
+        transearly = 1.4  # that starts a bit early because many tracks have tons of silence at the end
         prev = None
         end_of_playlist = False
 
         if self.source is None:
             try:
                 self.source = self.next()
-            except StopIteration, e:
-                self.emit(Player.sig_stopped, e.message)
+            except StopIteration as e:
+                self.sig_stopped.emit(str(e))
                 return
 
         self.source.start()
-        self.emit(Player.sig_started, self.source)
+        self.sig_started.emit(self.source)
 
         while not self.shutdown:
             try:
@@ -585,32 +585,31 @@ class Player(QtCore.QObject, threading.Thread):
             except StopIteration:
                 if not end_of_playlist:
                     self.source.stop()
-                    print "Huh. Looks like the source file ended prematurely. No transition then."
+                    print("Huh. Looks like the source file ended prematurely. No transition then.")
                     try:
                         self.source = self.next()
                     except StopIteration:
-                        print "Also, there's no more items in the playlist, exiting."
+                        print("Also, there's no more items in the playlist, exiting.")
                     else:
-                        print "Phew, got the next source. Go on people, nothing to see here."
+                        print("Phew, got the next source. Go on people, nothing to see here.")
                         self.source.start()
-                        self.emit(Player.sig_started, self.source)
+                        self.sig_started.emit(self.source)
                         continue
                 break
-            except Exception, err:
-                self.emit(Player.sig_stopped, "Error: " + err.message)
+            except Exception as err:
+                self.sig_stopped.emit("Error: " + str(err))
                 self.source.stop()
                 break
 
             if prev is None:
-                self.pcm.play( srcdata )
-                self.emit(Player.sig_position_normal, self.source, srcdata)
+                self.pcm.play(srcdata)
+                self.sig_position_normal.emit(self.source, srcdata)
 
                 if self.source.duration - self.source.pos - transearly <= transtime + 1 and not end_of_playlist:
                     # We'll enter transition in a second, preload the next file.
                     self.preload()
 
                 if self.source.duration - self.source.pos - transearly <= transtime and not end_of_playlist:
-                    #print "Entering transition!"
                     prev = self.source
                     try:
                         self.source = self.next()
@@ -620,48 +619,47 @@ class Player(QtCore.QObject, threading.Thread):
                         prev = None
                     else:
                         self.source.start()
-                        self.emit(Player.sig_started, self.source)
-                        self.emit(Player.sig_transition_start, prev, self.source)
+                        self.sig_started.emit(self.source)
+                        self.sig_transition_start.emit(prev, self.source)
 
             else:
                 try:
                     prevdata = prev.next()
                 except StopIteration:
-                    #print "Old source done, leaving transition!"
-                    self.emit(Player.sig_transition_end, prev, self.source)
+                    self.sig_transition_end.emit(prev, self.source)
                     prev.stop()
                     prev = None
-                    self.pcm.play( srcdata )
-                    self.emit(Player.sig_position_normal, self.source, srcdata)
+                    self.pcm.play(srcdata)
+                    self.sig_position_normal.emit(self.source, srcdata)
                 except Exception:
                     import traceback
                     traceback.print_exc()
                     # some other error happened, just play the other stream in its correct volume
-                    fac = max( (prev.duration - prev.pos - transearly), 0 ) / transtime
-                    self.emit(Player.sig_position_trans, prev, self.source, fac, "", srcdata)
-                    self.pcm.play( audioop.mul( srcdata, 2, 1 - fac ) )
+                    fac = max((prev.duration - prev.pos - transearly), 0) / transtime
+                    self.sig_position_trans.emit(prev, self.source, fac, b"", srcdata)
+                    self.pcm.play(audioop.mul(srcdata, 2, 1 - fac))
                 else:
-                    fac = max( (prev.duration - prev.pos - transearly), 0 ) / transtime
-                    self.emit(Player.sig_position_trans, prev, self.source, fac, prevdata, srcdata)
+                    fac = max((prev.duration - prev.pos - transearly), 0) / transtime
+                    self.sig_position_trans.emit(prev, self.source, fac, prevdata, srcdata)
                     if len(prevdata) != len(srcdata):
                         # The last chunk may be too short, causing audioop some pain.
-                        print "Chunk size mismatch (prev=%d, src=%d)" % (len(prevdata), len(srcdata))
+                        print("Chunk size mismatch (prev=%d, src=%d)" % (len(prevdata), len(srcdata)))
                         if len(prevdata) < len(srcdata):
                             # looks like this is the case, work around it.
                             rest = srcdata[len(prevdata):]
                             srcdata = srcdata[:len(prevdata)]
                         else:
                             # doesn't look that way. screw it, then.
-                            self.pcm.play( audioop.mul( srcdata, 2, 1 - fac ) )
+                            self.pcm.play(audioop.mul(srcdata, 2, 1 - fac))
                     else:
                         rest = None
-                    sample = audioop.add( audioop.mul( prevdata, 2, fac ), audioop.mul( srcdata, 2, 1 - fac ), 2 )
-                    self.pcm.play( sample )
+                    sample = audioop.add(audioop.mul(prevdata, 2, fac), audioop.mul(srcdata, 2, 1 - fac), 2)
+                    self.pcm.play(sample)
                     if rest is not None:
-                        self.pcm.play( audioop.mul( rest, 2, 1 - fac ) )
+                        self.pcm.play(audioop.mul(rest, 2, 1 - fac))
 
         self.source.stop()
-        self.emit(Player.sig_stopped, "end of playlist")
+        self.sig_stopped.emit("end of playlist")
 
 
 if __name__ == '__main__':
@@ -671,13 +669,13 @@ if __name__ == '__main__':
     from datetime import timedelta
 
     parser = OptionParser(usage="%prog [options] [<file> ...]\n")
-    parser.add_option( "-o", "--out",
+    parser.add_option("-o", "--out",
         help="Audio output device. See http://xiph.org/ao/doc/ for supported drivers. Defaults to pulse.",
         default="pulse"
         )
-    parser.add_option( "-p", "--playlist", help="A file to initialize the playlist from.")
-    parser.add_option( "-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.")
-    parser.add_option( "-q", "--enqueue",  help="Enqueue the tracks named on the command line.", action="store_true", default=False)
+    parser.add_option("-p", "--playlist", help="A file to initialize the playlist from.")
+    parser.add_option("-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.")
+    parser.add_option("-q", "--enqueue",  help="Enqueue the tracks named on the command line.", action="store_true", default=False)
     options, posargs = parser.parse_args()
 
     conf = ConfigParser()
@@ -699,12 +697,11 @@ if __name__ == '__main__':
 
     playlistfile = getconf("playlist")
     if playlistfile:
-        print "Loading playlist from", playlistfile
+        print("Loading playlist from", playlistfile)
         p.loadpls(playlistfile)
 
     enqueue = getconf("enqueue") in (True, "True")
     for filename in posargs:
-        filename = filename.decode("utf-8")
         if enqueue:
             p.enqueue(filename)
         else:
@@ -747,39 +744,39 @@ if __name__ == '__main__':
             sys.stdout.write("\r\x1b[K")
 
         def sourcetext(self, source):
-            return u"%s — %s (%s)" % (source.title, timedelta(seconds=int(source.pos)), timedelta(seconds=int(source.duration)))
+            return "%s \u2014 %s (%s)" % (source.title, timedelta(seconds=int(source.pos)), timedelta(seconds=int(source.duration)))
 
-        def showstatus_normal(self, src):
+        def showstatus_normal(self, src, data):
             self.termclear()
             self.colorprint(ConPrinter.Colors.blue, self.sourcetext(src))
             sys.stdout.flush()
 
-        def showstatus_transition(self, prev, src):
+        def showstatus_transition(self, prev, src, fac, prevdata, srcdata):
             self.termclear()
             self.colorprint(ConPrinter.Colors.red,   self.sourcetext(prev))
-            sys.stdout.write(u" → ")
+            sys.stdout.write(" \u2192 ")
             self.colorprint(ConPrinter.Colors.green, self.sourcetext(src))
             sys.stdout.flush()
 
         def showstatus_started(self, src):
             self.termclear()
-            print "Now playing:", src.title
+            print("Now playing:", src.title)
             sys.stdout.flush()
 
         def showstatus_stop(self, msg):
             self.termclear()
-            print "Exit:", msg
+            print("Exit:", msg)
             sys.stdout.flush()
 
     printer = ConPrinter()
 
-    player.connect( player, Player.sig_position_normal, printer.showstatus_normal     )
-    player.connect( player, Player.sig_position_trans,  printer.showstatus_transition )
-    player.connect( player, Player.sig_started, printer.showstatus_started )
-    player.connect( player, Player.sig_stopped, printer.showstatus_stop    )
-    player.connect( player, Player.sig_stopped, app.quit )
+    player.sig_position_normal.connect(printer.showstatus_normal)
+    player.sig_position_trans.connect(printer.showstatus_transition)
+    player.sig_started.connect(printer.showstatus_started)
+    player.sig_stopped.connect(printer.showstatus_stop)
+    player.sig_stopped.connect(lambda msg: app.quit())
 
-    print "OK, here we go - hit ^C to exit."
+    print("OK, here we go - hit ^C to exit.")
 
     player.start()
 
@@ -791,5 +788,5 @@ if __name__ == '__main__':
 
     playlistfile = getconf("writepls")
     if playlistfile:
-        print "Saving playlist to", playlistfile
+        print("Saving playlist to", playlistfile)
         p.writepls(playlistfile)

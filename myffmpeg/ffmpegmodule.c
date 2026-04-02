@@ -3,6 +3,8 @@
  *
  *  Copyright © 2012, Michael "Svedrin" Ziegler <diese-addy@funzt-halt.net>
  *
+ *  Updated for Python 3 and modern FFmpeg (4.x+).
+ *
  *  To compile this file into a Python module, run `python setup.py build`.
  *  The compiled binary will be put into build/lib.<platform>/_ffmpeg.so.
  *
@@ -22,10 +24,12 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libavresample/avresample.h>
+#include <libswresample/swresample.h>
 #include <libavutil/avutil.h>
 #include <libavutil/opt.h>
 #include <libavutil/mathematics.h>
+#include <libavutil/samplefmt.h>
+#include <libavutil/channel_layout.h>
 
 
 #define MODULE_DOCSTRING "Python Module that decodes audio using FFmpeg's lavc."
@@ -48,9 +52,7 @@
 	"             output_channel_layout=AV_CH_LAYOUT_STEREO, \n"\
 	"             input_channel_layout=AV_CH_LAYOUT_STEREO, \n"\
 	"             output_sample_format=AV_SAMPLE_FMT_S16, \n"\
-	"             input_sample_format=AV_SAMPLE_FMT_S16, \n"\
-	"             filter_length=16, log2_phase_count=10, \n"\
-	"             linear=0, cutoff=1 \n"\
+	"             input_sample_format=AV_SAMPLE_FMT_S16 \n"\
 	"   )\n"\
 	""
 
@@ -60,59 +62,59 @@ static PyObject *FfmpegResampleError;
 static PyObject *FfmpegFileError;
 
 
-// I'd really like this thing to support streams. I just don't know if it will ever
-// happen. Anyway, here's a coupl'a links on how this seems to work with libav:
-//
-// ffurl_open/close  → https://ffmpeg.org/doxygen/1.0/avio_8c-source.html#l00234
-// open_input_stream → https://ffmpeg.org/doxygen/1.0/ffserver_8c-source.html#l02138
-// http_connect      → https://ffmpeg.org/doxygen/1.0/http_8c-source.html#l00377
-
-/**
- * HACK UNTIL DEBIAN UPDATES LIBAV
- */
-
-#define av_sample_format_is_planar(fmt) ((fmt) >= AV_SAMPLE_FMT_U8P && (fmt) <= AV_SAMPLE_FMT_DBLP)
-
 /**
  * DECODER
  */
 
 typedef struct {
 	PyObject_HEAD
-	const char *infile;
+	char *infile;
 	AVFormatContext *pFormatCtx;
-	AVCodecContext *pCodecCtx;
-	AVStream *pStream;
+	AVCodecContext  *pCodecCtx;
+	AVStream        *pStream;
+	AVPacket        *pkt;
+	AVFrame         *frame;
 } ffmpegDecoderObject;
 
 static PyObject* ffmpeg_decoder_new( PyTypeObject* type, PyObject* args ){
 	ffmpegDecoderObject* self;
-	AVCodec *codec;
+	const AVCodec *codec;
 	int streamIdx;
 	int err = 0;
-	
+
 	self = (ffmpegDecoderObject *) type->tp_alloc( type, 0 );
-	
+
 	if( self == NULL )
 		return NULL;
-	
+
 	self->pFormatCtx = NULL;
 	self->pCodecCtx  = NULL;
-	
-	if( !PyArg_ParseTuple( args, "s", &self->infile ) ){
+	self->pkt        = NULL;
+	self->frame      = NULL;
+
+	const char *infile_arg;
+	if( !PyArg_ParseTuple( args, "s", &infile_arg ) ){
 		err = 1;
 	}
-	
+
+	if( !err ){
+		self->infile = av_strdup(infile_arg);
+		if( self->infile == NULL ){
+			PyErr_NoMemory();
+			err = 1;
+		}
+	}
+
 	if( !err && avformat_open_input(&self->pFormatCtx, self->infile, NULL, NULL) < 0){
 		PyErr_SetString(FfmpegFileError, "could not open infile");
 		err = 2;
 	}
-	
+
 	if( !err && avformat_find_stream_info(self->pFormatCtx, NULL) < 0) {
 		PyErr_SetString(FfmpegDecodeError, "could not find stream information");
 		err = 3;
 	}
-	
+
 	if( !err ){
 		streamIdx = av_find_best_stream(self->pFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0);
 		if( streamIdx < 0 ){
@@ -120,32 +122,62 @@ static PyObject* ffmpeg_decoder_new( PyTypeObject* type, PyObject* args ){
 			err = 4;
 		}
 	}
-	
+
 	if( !err ){
-		self->pStream   = self->pFormatCtx->streams[streamIdx];
-		self->pCodecCtx = self->pFormatCtx->streams[streamIdx]->codec;
-		
-		if( avcodec_open2(self->pCodecCtx, codec, NULL) < 0 ){
-			PyErr_SetString(FfmpegDecodeError, "could not open codec");
+		self->pStream = self->pFormatCtx->streams[streamIdx];
+
+		self->pCodecCtx = avcodec_alloc_context3(codec);
+		if( self->pCodecCtx == NULL ){
+			PyErr_SetString(FfmpegDecodeError, "could not allocate codec context");
 			err = 5;
 		}
 	}
-	
+
+	if( !err && avcodec_parameters_to_context(self->pCodecCtx, self->pStream->codecpar) < 0 ){
+		PyErr_SetString(FfmpegDecodeError, "could not copy codec parameters");
+		err = 6;
+	}
+
+	if( !err && avcodec_open2(self->pCodecCtx, codec, NULL) < 0 ){
+		PyErr_SetString(FfmpegDecodeError, "could not open codec");
+		err = 7;
+	}
+
+	if( !err ){
+		self->pkt = av_packet_alloc();
+		self->frame = av_frame_alloc();
+		if( self->pkt == NULL || self->frame == NULL ){
+			PyErr_NoMemory();
+			err = 8;
+		}
+	}
+
+	if( err > 4 && self->pCodecCtx != NULL ){
+		avcodec_free_context(&self->pCodecCtx);
+	}
+
 	if( err > 2 ){
 		avformat_close_input(&self->pFormatCtx);
 	}
-	
+
 	if( err > 0 ){
+		if( self->pkt )   av_packet_free(&self->pkt);
+		if( self->frame ) av_frame_free(&self->frame);
+		av_free(self->infile);
 		type->tp_free( self );
 		self = NULL;
 	}
-	
+
 	return (PyObject *)self;
 }
 
 static void ffmpeg_decoder_dealloc( ffmpegDecoderObject* self ){
-	avcodec_close(self->pCodecCtx);
-	avformat_close_input(&self->pFormatCtx);
+	if( self->pCodecCtx ) avcodec_free_context(&self->pCodecCtx);
+	if( self->pFormatCtx ) avformat_close_input(&self->pFormatCtx);
+	if( self->pkt )   av_packet_free(&self->pkt);
+	if( self->frame ) av_frame_free(&self->frame);
+	av_free(self->infile);
+	Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject* ffmpeg_decoder_dump_format( ffmpegDecoderObject* self ){
@@ -154,27 +186,27 @@ static PyObject* ffmpeg_decoder_dump_format( ffmpegDecoderObject* self ){
 }
 
 static PyObject* ffmpeg_decoder_get_bitrate( ffmpegDecoderObject* self ){
-	return PyInt_FromLong( self->pCodecCtx->bit_rate );
+	return PyLong_FromLong( self->pCodecCtx->bit_rate );
 }
 
 static PyObject* ffmpeg_decoder_get_samplerate( ffmpegDecoderObject* self ){
-	return PyInt_FromLong( self->pCodecCtx->sample_rate );
+	return PyLong_FromLong( self->pCodecCtx->sample_rate );
 }
 
 static PyObject* ffmpeg_decoder_get_samplefmt( ffmpegDecoderObject* self ){
-	return PyInt_FromLong( self->pCodecCtx->sample_fmt );
+	return PyLong_FromLong( self->pCodecCtx->sample_fmt );
 }
 
 static PyObject* ffmpeg_decoder_get_channels( ffmpegDecoderObject* self ){
-	return PyInt_FromLong( self->pCodecCtx->channels );
+	return PyLong_FromLong( self->pCodecCtx->ch_layout.nb_channels );
 }
 
 static PyObject* ffmpeg_decoder_get_channel_layout( ffmpegDecoderObject* self ){
-	return PyInt_FromLong( self->pCodecCtx->channel_layout );
+	return PyLong_FromLong( (long)self->pCodecCtx->ch_layout.u.mask );
 }
 
 static PyObject* ffmpeg_decoder_get_codec( ffmpegDecoderObject* self ){
-	return PyString_FromString( self->pCodecCtx->codec->name );
+	return PyUnicode_FromString( self->pCodecCtx->codec->name );
 }
 
 static PyObject* ffmpeg_decoder_get_duration( ffmpegDecoderObject* self ){
@@ -182,20 +214,20 @@ static PyObject* ffmpeg_decoder_get_duration( ffmpegDecoderObject* self ){
 }
 
 static PyObject* ffmpeg_decoder_get_path( ffmpegDecoderObject* self ){
-	return PyString_FromString( self->infile );
+	return PyUnicode_FromString( self->infile );
 }
 
 static PyObject* ffmpeg_decoder_get_metadata( ffmpegDecoderObject* self ){
 	PyObject* metadict = PyDict_New();
 	AVDictionaryEntry *metaent = NULL;
 	while( (metaent = av_dict_get(self->pFormatCtx->metadata, "", metaent, AV_DICT_IGNORE_SUFFIX)) != NULL ){
-		PyObject* str = PyString_FromString(metaent->value);
+		PyObject* str = PyUnicode_FromString(metaent->value);
 		PyDict_SetItemString(metadict, metaent->key, str);
 		Py_DECREF(str);
 	}
 	metaent = NULL;
 	while( (metaent = av_dict_get(self->pStream->metadata, "", metaent, AV_DICT_IGNORE_SUFFIX)) != NULL ){
-		PyObject* str = PyString_FromString(metaent->value);
+		PyObject* str = PyUnicode_FromString(metaent->value);
 		PyDict_SetItemString(metadict, metaent->key, str);
 		Py_DECREF(str);
 	}
@@ -204,49 +236,69 @@ static PyObject* ffmpeg_decoder_get_metadata( ffmpegDecoderObject* self ){
 
 
 static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
-	AVPacket avpkt;
-	AVFrame *avfrm;
-	int got_frame;
+	int nb_channels;
 	int data_size;
 	int i;
-	PyObject* ret = NULL;
-	
-	if( av_read_frame(self->pFormatCtx, &avpkt) < 0 ){
-		PyErr_SetString(PyExc_StopIteration, "no more frames to read");
-		return NULL;
+	int ret;
+	PyObject* result = NULL;
+
+	/* Read packets until we receive a decoded frame. */
+	while( 1 ){
+		ret = av_read_frame(self->pFormatCtx, self->pkt);
+		if( ret < 0 ){
+			/* EOF or error: flush the decoder */
+			avcodec_send_packet(self->pCodecCtx, NULL);
+			ret = avcodec_receive_frame(self->pCodecCtx, self->frame);
+			if( ret < 0 ){
+				PyErr_SetString(PyExc_StopIteration, "no more frames to read");
+				return NULL;
+			}
+			break;
+		}
+
+		if( avcodec_send_packet(self->pCodecCtx, self->pkt) < 0 ){
+			av_packet_unref(self->pkt);
+			continue;
+		}
+		av_packet_unref(self->pkt);
+
+		ret = avcodec_receive_frame(self->pCodecCtx, self->frame);
+		if( ret == AVERROR(EAGAIN) ){
+			continue;  /* need more packets */
+		}
+		if( ret < 0 ){
+			PyErr_SetString(FfmpegDecodeError, "decoding failed");
+			return NULL;
+		}
+		break;
 	}
-	
-	if( (avfrm = av_frame_alloc()) == NULL ){
-		PyErr_SetString(FfmpegDecodeError, "out of memory");
-		av_packet_unref(&avpkt);
-		return NULL;
-	}
-	
-	got_frame = 0;
-	if( avcodec_decode_audio4(self->pCodecCtx, avfrm, &got_frame, &avpkt) < 0 || !got_frame ){
-		PyErr_SetString(FfmpegDecodeError, "decoding failed");
+
+	nb_channels = self->frame->ch_layout.nb_channels;
+	data_size = av_samples_get_buffer_size(
+		NULL, nb_channels, self->frame->nb_samples,
+		(enum AVSampleFormat)self->frame->format, 1
+	);
+
+	if( av_sample_fmt_is_planar((enum AVSampleFormat)self->frame->format) ){
+		/* planar data: return each channel separately */
+		result = PyTuple_New(nb_channels);
+		for( i = 0; i < nb_channels; i++ ){
+			PyTuple_SetItem(result, i, PyBytes_FromStringAndSize(
+				(const char*)self->frame->extended_data[i],
+				data_size / nb_channels
+			));
+		}
 	}
 	else{
-		data_size = av_samples_get_buffer_size(
-			NULL, self->pCodecCtx->channels, avfrm->nb_samples, self->pCodecCtx->sample_fmt, 1
-		);
-		if( av_sample_format_is_planar(self->pCodecCtx->sample_fmt) ){
-			// planar data. read all the streams and return their data as a tuple.
-			ret = PyTuple_New(self->pCodecCtx->channels);
-			for( i = 0; i < self->pCodecCtx->channels; i++ ){
-				PyTuple_SetItem(ret, i, PyString_FromStringAndSize( (const char*)avfrm->extended_data[i], data_size / self->pCodecCtx->channels ));
-			}
-		}
-		else{
-			ret = PyTuple_New(1);
-			PyTuple_SetItem(ret, 0, PyString_FromStringAndSize( (const char*)avfrm->data[0], data_size ));
-		}
+		result = PyTuple_New(1);
+		PyTuple_SetItem(result, 0, PyBytes_FromStringAndSize(
+			(const char*)self->frame->data[0], data_size
+		));
 	}
-	
-	av_packet_unref(&avpkt);
-	av_free(avfrm);
-	
-	return ret;
+
+	av_frame_unref(self->frame);
+
+	return result;
 }
 
 
@@ -270,7 +322,7 @@ static PyMemberDef ffmpegDecoderObject_Members[] = {
 };
 
 static PyTypeObject ffmpegDecoder = {
-	PyObject_HEAD_INIT(NULL)
+	PyVarObject_HEAD_INIT(NULL, 0)
 	.tp_name      = "ffmpeg.Decoder",
 	.tp_basicsize = sizeof( ffmpegDecoderObject ),
 	.tp_dealloc   = (destructor)ffmpeg_decoder_dealloc,
@@ -288,36 +340,36 @@ static PyTypeObject ffmpegDecoder = {
 
 typedef struct {
 	PyObject_HEAD
-	AVAudioResampleContext *pResampleCtx;
+	SwrContext *pResampleCtx;
 	int output_rate;
 	int input_rate;
-	int output_channel_layout;
-	int input_channel_layout;
+	int64_t output_channel_layout;
+	int64_t input_channel_layout;
 	enum AVSampleFormat output_sample_format;
 	enum AVSampleFormat input_sample_format;
 } ffmpegResamplerObject;
 
 static PyObject* ffmpeg_resampler_new( PyTypeObject* type, PyObject* args, PyObject* kw ){
 	ffmpegResamplerObject* self;
-	
+
 	static char *kwlist[] = {
 		"output_rate", "input_rate", "output_channel_layout", "input_channel_layout",
 		"output_sample_format", "input_sample_format",
 		NULL};
-	
+
 	self = (ffmpegResamplerObject *) type->tp_alloc( type, 0 );
-	
+
 	if( self == NULL )
 		return NULL;
-	
+
 	self->output_rate = 0;
 	self->input_rate  = 0;
 	self->output_channel_layout = AV_CH_LAYOUT_STEREO;
 	self->input_channel_layout  = AV_CH_LAYOUT_STEREO;
 	self->output_sample_format = AV_SAMPLE_FMT_S16;
 	self->input_sample_format  = AV_SAMPLE_FMT_S16;
-	
-	if( !PyArg_ParseTupleAndKeywords( args, kw, "ii|iiii", kwlist,
+
+	if( !PyArg_ParseTupleAndKeywords( args, kw, "ii|LLii", kwlist,
 		&self->output_rate,           &self->input_rate,
 		&self->output_channel_layout, &self->input_channel_layout,
 		&self->output_sample_format,  &self->input_sample_format
@@ -325,114 +377,111 @@ static PyObject* ffmpeg_resampler_new( PyTypeObject* type, PyObject* args, PyObj
 		type->tp_free( self );
 		return NULL;
 	}
-	
-	self->pResampleCtx = avresample_alloc_context();
-	
-	if( self->pResampleCtx == NULL ){
+
+	AVChannelLayout in_ch_layout  = AV_CHANNEL_LAYOUT_MASK(
+		av_get_channel_layout_nb_channels(self->input_channel_layout),
+		self->input_channel_layout
+	);
+	AVChannelLayout out_ch_layout = AV_CHANNEL_LAYOUT_MASK(
+		av_get_channel_layout_nb_channels(self->output_channel_layout),
+		self->output_channel_layout
+	);
+
+	self->pResampleCtx = NULL;
+	int ret = swr_alloc_set_opts2(
+		&self->pResampleCtx,
+		&out_ch_layout, self->output_sample_format, self->output_rate,
+		&in_ch_layout,  self->input_sample_format,  self->input_rate,
+		0, NULL
+	);
+
+	if( ret < 0 || self->pResampleCtx == NULL ){
 		PyErr_SetString(FfmpegResampleError, "could not initialize resampler");
 		type->tp_free( self );
 		return NULL;
 	}
-	
-	av_opt_set_int(self->pResampleCtx, "in_channel_layout",  self->input_channel_layout,  0);
-	av_opt_set_int(self->pResampleCtx, "out_channel_layout", self->output_channel_layout, 0);
-	av_opt_set_int(self->pResampleCtx, "in_sample_rate",     self->input_rate,            0);
-	av_opt_set_int(self->pResampleCtx, "out_sample_rate",    self->output_rate,           0);
-	av_opt_set_int(self->pResampleCtx, "in_sample_fmt",      self->input_sample_format,   0);
-	av_opt_set_int(self->pResampleCtx, "out_sample_fmt",     self->output_sample_format,  0);
-	
-	avresample_open(self->pResampleCtx);
-	
+
+	if( swr_init(self->pResampleCtx) < 0 ){
+		swr_free(&self->pResampleCtx);
+		PyErr_SetString(FfmpegResampleError, "could not open resampler");
+		type->tp_free( self );
+		return NULL;
+	}
+
 	return (PyObject *)self;
 }
 
 static void ffmpeg_resampler_dealloc( ffmpegResamplerObject* self ){
-	avresample_free(&self->pResampleCtx);
-}
-
-
-// For some reason, Debian insists on packaging a version that doesn't have this, so the following is
-// shamelessly stolen from samplefmt.c.
-// see http://www.ffmpeg.org/doxygen/trunk/samplefmt_8c_source.html
-int av_samples_alloc_array_and_samples(uint8_t ***audio_data, int *linesize, int nb_channels,
-					int nb_samples, enum AVSampleFormat sample_fmt, int align)
-{
-	int ret, nb_planes = av_sample_fmt_is_planar(sample_fmt) ? nb_channels : 1;
-
-	*audio_data = av_mallocz(nb_planes * sizeof(**audio_data));
-	if (!*audio_data)
-		return AVERROR(ENOMEM);
-	ret = av_samples_alloc(*audio_data, linesize, nb_channels,
-				nb_samples, sample_fmt, align);
-	if (ret < 0)
-		av_freep(audio_data);
-	return ret;
+	swr_free(&self->pResampleCtx);
+	Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 
 static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObject* args ){
-	const char** indata = NULL;
+	const uint8_t **indata = NULL;
 	int i;
 	int innb;
 	int inlen;
 	int inplanes;
-	uint8_t **outbuf;
+	uint8_t **outbuf = NULL;
 	int outnb;
-	int outlen;
 	int outplanes = 0;
 	PyObject* in  = NULL;
 	PyObject* ret = NULL;
-	
+
 	if( !PyArg_ParseTuple( args, "O!", &PyTuple_Type, &in ) )
 		return NULL;
-	
-	inplanes = PyTuple_Size(in);
-	
-	indata = malloc( sizeof(const char*) * inplanes );
+
+	inplanes = (int)PyTuple_Size(in);
+
+	indata = (const uint8_t**)malloc( sizeof(uint8_t*) * inplanes );
 	if( indata == NULL ){
 		PyErr_SetString(FfmpegResampleError, "out of memory");
 		return NULL;
 	}
 	for( i = 0; i < inplanes; i++ ){
-		indata[i] = PyString_AsString(PyTuple_GetItem(in, i));
+		PyObject *item = PyTuple_GetItem(in, i);
+		indata[i] = (const uint8_t*)PyBytes_AsString(item);
 	}
-	
-	inlen = PyString_Size(PyTuple_GetItem(in, 0));
+
+	inlen = (int)PyBytes_Size(PyTuple_GetItem(in, 0));
 	innb  = inlen / av_get_bytes_per_sample(self->input_sample_format);
-	
-	outnb  = av_rescale_rnd(innb + avresample_get_delay(self->pResampleCtx),
-				self->output_rate, self->input_rate, AV_ROUND_UP);
-	
-	outlen = av_samples_get_buffer_size(
-		NULL, av_get_channel_layout_nb_channels(self->output_channel_layout),
-		outnb, self->output_sample_format, 1
+
+	outnb = (int)av_rescale_rnd(
+		innb + swr_get_delay(self->pResampleCtx, self->input_rate),
+		self->output_rate, self->input_rate, AV_ROUND_UP
 	);
-	
+
+	int out_channels = av_get_channel_layout_nb_channels(self->output_channel_layout);
+
 	if( av_samples_alloc_array_and_samples(&outbuf, NULL,
-			av_get_channel_layout_nb_channels(self->output_channel_layout),
-			outnb, self->output_sample_format, 0) < 0 ){
+			out_channels, outnb, self->output_sample_format, 0) < 0 ){
+		free(indata);
 		PyErr_SetString(FfmpegResampleError, "out of memory");
+		return NULL;
 	}
-	else if( avresample_convert(self->pResampleCtx, outbuf, 0, outnb, (uint8_t **)indata, 0, innb) < 0 ){
+
+	int converted = swr_convert(self->pResampleCtx, outbuf, outnb, indata, innb);
+	if( converted < 0 ){
 		PyErr_SetString(FfmpegResampleError, "resampling failed");
 	}
 	else{
+		int outlen = av_samples_get_buffer_size(NULL, out_channels, converted,
+		                                        self->output_sample_format, 1);
 		outplanes = 1;
-		if(av_sample_fmt_is_planar(self->output_sample_format))
-			outplanes = av_get_channel_layout_nb_channels(self->output_channel_layout);
+		if( av_sample_fmt_is_planar(self->output_sample_format) )
+			outplanes = out_channels;
 		ret = PyTuple_New(outplanes);
 		for( i = 0; i < outplanes; i++ )
-			PyTuple_SetItem(ret, i, PyString_FromStringAndSize( (const char*)outbuf[i], outlen ));
+			PyTuple_SetItem(ret, i, PyBytes_FromStringAndSize(
+				(const char*)outbuf[i], outlen / outplanes
+			));
 	}
-	
+
 	free(indata);
-	
-	for( i = 0; i < outplanes; i++ ){
-		free(outbuf[i]);
-	}
-	
-	free(outbuf);
-	
+	av_freep(&outbuf[0]);
+	av_freep(&outbuf);
+
 	return ret;
 }
 
@@ -446,7 +495,7 @@ static PyMemberDef ffmpegResamplerObject_Members[] = {
 };
 
 static PyTypeObject ffmpegResampler = {
-	PyObject_HEAD_INIT(NULL)
+	PyVarObject_HEAD_INIT(NULL, 0)
 	.tp_name      = "ffmpeg.Resampler",
 	.tp_basicsize = sizeof( ffmpegResamplerObject ),
 	.tp_dealloc   = (destructor)ffmpeg_resampler_dealloc,
@@ -465,13 +514,13 @@ static PyTypeObject ffmpegResampler = {
 static PyObject* ffmpeg_get_sample_fmt_name( PyObject* module, PyObject* args ){
 	enum AVSampleFormat sample_fmt;
 	const char* fmt_name;
-	
+
 	if( !PyArg_ParseTuple( args, "i", &sample_fmt ) )
 		return NULL;
-	
+
 	if( (fmt_name = av_get_sample_fmt_name(sample_fmt)) != NULL )
-		return PyString_FromString( fmt_name );
-	
+		return PyUnicode_FromString( fmt_name );
+
 	PyErr_SetString(PyExc_KeyError, "Sample format not recognized");
 	return NULL;
 }
@@ -479,57 +528,62 @@ static PyObject* ffmpeg_get_sample_fmt_name( PyObject* module, PyObject* args ){
 static PyObject* ffmpeg_get_bytes_per_sample( PyObject* module, PyObject* args ){
 	enum AVSampleFormat sample_fmt;
 	int bps;
-	
+
 	if( !PyArg_ParseTuple( args, "i", &sample_fmt ) )
 		return NULL;
-	
+
 	if( (bps = av_get_bytes_per_sample(sample_fmt)) )
-		return PyInt_FromLong( bps );
-	
+		return PyLong_FromLong( bps );
+
 	PyErr_SetString(PyExc_KeyError, "Sample format not recognized");
 	return NULL;
 }
 
 static PyMethodDef ffmpegmodule_Methods[] = {
-	{ "get_sample_fmt_name", (PyCFunction)ffmpeg_get_sample_fmt_name, METH_VARARGS, "get_sample_fmt_name(format)\nReturn the given sample format's name."},
-	{ "get_bytes_per_sample", (PyCFunction)ffmpeg_get_bytes_per_sample, METH_VARARGS, "get_sample_fmt_name(format)\nReturn the size of one sample in bytes."},
+	{ "get_sample_fmt_name",  (PyCFunction)ffmpeg_get_sample_fmt_name,  METH_VARARGS, "get_sample_fmt_name(format)\nReturn the given sample format's name."},
+	{ "get_bytes_per_sample", (PyCFunction)ffmpeg_get_bytes_per_sample, METH_VARARGS, "get_bytes_per_sample(format)\nReturn the size of one sample in bytes."},
 	{ NULL, NULL, 0, NULL }
 };
 
-#ifndef PyMODINIT_FUNC	/* declarations for DLL import/export */
-#define PyMODINIT_FUNC void
-#endif
-PyMODINIT_FUNC init_ffmpeg(void){
+static struct PyModuleDef ffmpegmodule = {
+	PyModuleDef_HEAD_INIT,
+	"_ffmpeg",
+	MODULE_DOCSTRING,
+	-1,
+	ffmpegmodule_Methods
+};
+
+PyMODINIT_FUNC PyInit__ffmpeg(void){
 	PyObject* module;
-	
-	if( PyType_Ready( &ffmpegDecoder ) < 0 ){
-		return;
-	}
-	
-	if( PyType_Ready( &ffmpegResampler ) < 0 ){
-		return;
-	}
-	
-	module = Py_InitModule3( "_ffmpeg", ffmpegmodule_Methods, MODULE_DOCSTRING );
-	
+
+	if( PyType_Ready( &ffmpegDecoder ) < 0 )
+		return NULL;
+
+	if( PyType_Ready( &ffmpegResampler ) < 0 )
+		return NULL;
+
+	module = PyModule_Create( &ffmpegmodule );
+	if( module == NULL )
+		return NULL;
+
 	Py_INCREF( &ffmpegDecoder );
 	PyModule_AddObject( module, "Decoder", (PyObject *)&ffmpegDecoder );
-	
+
 	Py_INCREF( &ffmpegResampler );
 	PyModule_AddObject( module, "Resampler", (PyObject *)&ffmpegResampler );
-	
-	FfmpegDecodeError = PyErr_NewException("ffmpeg.DecodeError", NULL, NULL);
+
+	FfmpegDecodeError = PyErr_NewException("_ffmpeg.DecodeError", NULL, NULL);
 	Py_INCREF(FfmpegDecodeError);
 	PyModule_AddObject( module, "DecodeError", FfmpegDecodeError );
-	
-	FfmpegResampleError = PyErr_NewException("ffmpeg.ResampleError", NULL, NULL);
+
+	FfmpegResampleError = PyErr_NewException("_ffmpeg.ResampleError", NULL, NULL);
 	Py_INCREF(FfmpegResampleError);
 	PyModule_AddObject( module, "ResampleError", FfmpegResampleError );
-	
-	FfmpegFileError = PyErr_NewException("ffmpeg.FileError", NULL, NULL);
+
+	FfmpegFileError = PyErr_NewException("_ffmpeg.FileError", NULL, NULL);
 	Py_INCREF(FfmpegFileError);
 	PyModule_AddObject( module, "FileError", FfmpegFileError );
-	
+
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_NONE );
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_U8   );
 	PyModule_AddIntMacro( module, AV_SAMPLE_FMT_S16  );
@@ -550,10 +604,8 @@ PyMODINIT_FUNC init_ffmpeg(void){
 	PyModule_AddIntMacro( module, AV_CH_LAYOUT_2_2            );
 	PyModule_AddIntMacro( module, AV_CH_LAYOUT_QUAD           );
 	PyModule_AddIntMacro( module, AV_CH_LAYOUT_STEREO_DOWNMIX );
-	
-	avcodec_register_all();
-	av_register_all();
+
 	avformat_network_init();
+
+	return module;
 }
-
-

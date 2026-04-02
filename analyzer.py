@@ -1,20 +1,14 @@
 # -*- coding: utf-8 -*-
 # kate: space-indent on; indent-width 4; replace-tabs on;
 
-from __future__ import division
-
 import numpy
 import audioop
 
-from scipy import fft
+from PyQt5 import QtGui, QtWidgets
 
-from PyQt4 import Qt
-from PyQt4 import QtCore
-from PyQt4 import QtGui
-
-class QFftAnalyzer( QtGui.QWidget ):
-    def __init__( self, parent, columns=50 ):
-        QtGui.QWidget.__init__(self, parent)
+class QFftAnalyzer(QtWidgets.QWidget):
+    def __init__(self, parent, columns=50):
+        QtWidgets.QWidget.__init__(self, parent)
         self.points  = []
         self.columns = columns
 
@@ -30,11 +24,11 @@ class QFftAnalyzer( QtGui.QWidget ):
         width  = evt.rect().width()
         height = evt.rect().height()
         plen = max(int(1 / float(width) * len(self.points)), 1)
-        for x in xrange(width):
+        for x in range(width):
             pstart = int(x / width * len(self.points))
             prange = self.points[pstart:pstart + plen]
             thing = int(max(numpy.log10(numpy.sqrt(prange) + 1.)) * height)
-            painter.drawLine( left + x, top + height, left + x, top + height - thing)
+            painter.drawLine(left + x, top + height, left + x, top + height - thing)
 
     def __call__(self, chunk):
         if not chunk:
@@ -44,7 +38,7 @@ class QFftAnalyzer( QtGui.QWidget ):
         # we only need data for self.columns * 2 for FFT * 2 channels * 2 bytes per sample
         mono = audioop.tomono(chunk[:self.columns * 2 * 2 * 2], 2, 0.5, 0.5)
         mono = numpy.frombuffer(mono, numpy.short)
-        y = fft(mono / float(2**15))
+        y = numpy.fft.fft(mono / float(2**15))
 
         self.points = abs(y[1:self.columns])
         self.update()

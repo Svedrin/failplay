@@ -15,10 +15,10 @@
  *  GNU General Public License for more details.
 """
 
-from PyQt4 import QtGui
+from PyQt5 import QtWidgets
 
-class LibraryView(QtGui.QTreeView):
+class LibraryView(QtWidgets.QTreeView):
     def resizeEvent(self, evt):
         # Und ob du es tust.
         self.setColumnWidth(0, evt.size().width() - 100)
-        return QtGui.QTreeView.resizeEvent(self, evt)
+        return QtWidgets.QTreeView.resizeEvent(self, evt)
