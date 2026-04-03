@@ -20,8 +20,8 @@ import sys
 import curses
 
 from time import time, sleep
-from ConfigParser import ConfigParser
-from PyQt4 import Qt, QtCore
+from configparser import ConfigParser
+from PyQt5 import Qt, QtCore
 
 from failaudio import Playlist, Player
 
@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
     playlistfile = getconf("playlist")
     if playlistfile:
-        print "Loading playlist from", playlistfile
+        print("Loading playlist from", playlistfile)
         p.loadpls(playlistfile)
 
     enqueue = getconf("enqueue") in (True, "True")
@@ -107,14 +107,17 @@ if __name__ == '__main__':
 
                 #stdscr.addstr(itemIdx - startIdx,  0, "%d / %d" % (itemIdx, len(p)), clr)
                 stdscr.addstr(itemIdx - startIdx,  0,
-                    p.data(p.index(itemIdx, 0), Qt.Qt.DisplayRole).encode("UTF-8"), clr)
+                    p.data(p.index(itemIdx, 0), Qt.Qt.DisplayRole), clr)
                 stdscr.addstr(itemIdx - startIdx, 70,
-                    p.data(p.index(itemIdx, 1), Qt.Qt.DisplayRole).encode("UTF-8"), clr)
+                    p.data(p.index(itemIdx, 1), Qt.Qt.DisplayRole), clr)
 
-            stdscr.addstr(maxy + 1, 0,
-                (u"%s — %s (%s)" % (player.source.title,
-                    timedelta(seconds=int(player.source.pos)),
-                    timedelta(seconds=int(player.source.duration)))).encode("utf-8"))
+            if player.source is not None:
+                stdscr.addstr(maxy + 1, 0,
+                    "%s \u2014 %s (%s)" % (player.source.title,
+                        timedelta(seconds=int(player.source.pos)),
+                        timedelta(seconds=int(player.source.duration))))
+            else:
+                stdscr.addstr(maxy + 1, 0, "Loading...")
 
             stdscr.refresh()
 
@@ -139,7 +142,7 @@ if __name__ == '__main__':
             elif c == -1:
                 sleep(.05)
             else:
-                print "wat", c
+                print("wat", c)
 
 
     try:
@@ -149,5 +152,5 @@ if __name__ == '__main__':
 
         playlistfile = getconf("writepls")
         if playlistfile:
-            print "Saving playlist to", playlistfile
+            print("Saving playlist to", playlistfile)
             p.writepls(playlistfile)
