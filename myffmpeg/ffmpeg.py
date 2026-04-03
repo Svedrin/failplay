@@ -65,6 +65,8 @@ class Decoder(object):
         self._decoder = LowLevelDecoder(fpath)
         self._buffer  = [b""] * (self.channels if self.is_planar else 1)
         self._readbytes = 0
+        self._want_samplerate = want_samplerate
+        self._want_samplefmt  = want_samplefmt
 
         if self.samplerate != want_samplerate or self.samplefmt != want_samplefmt:
             self.resampler = Resampler( output_rate=want_samplerate, input_rate=self.samplerate,
@@ -89,10 +91,11 @@ class Decoder(object):
     @property
     def position(self):
         """ The player's position in the file in seconds. """
-        # the  "* 2" should be "* self.channels", but since we always return mono
-        # copied to stereo, mono bytes get counted twice, so it evens out.
-        # this mono stuff sucks horribly...
-        return self._readbytes / float(self.samplerate * 2 * get_bytes_per_sample(self.samplefmt))
+        # _readbytes counts post-resample bytes, so we must use the output
+        # rate/format here, not the input ones.  The "* 2" is channels: mono
+        # input is always duplicated to stereo before resampling, so the
+        # output is always 2-channel.
+        return self._readbytes / float(self._want_samplerate * 2 * get_bytes_per_sample(self._want_samplefmt))
 
     def read(self, chunk_size=4096):
         """ Get chunks of exactly ``chunk_size`` bytes. """
