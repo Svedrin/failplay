@@ -231,15 +231,12 @@ class FailPlay(Ui_MainWindow, QtWidgets.QMainWindow):
             self.pgbSongProgressPrev.setFormat("Idle")
             self.pgbSongProgressPrev.setMaximum(100)
             self.pgbSongProgressPrev.setValue(0)
-            self.sldCrossfade.setValue(0)
-            self.anzSong(srcdata)
         else:
             self._status_update(self.pgbSongProgressPrev, source)
             self.pgbSongProgress.setFormat("Idle")
             self.pgbSongProgress.setMaximum(100)
             self.pgbSongProgress.setValue(0)
-            self.sldCrossfade.setValue(100)
-            self.anzPrev(srcdata)
+        self.ledViz.update_normal(srcdata)
 
     def onPlayerPositionTrans(self, prev, source, fac, prevdata, srcdata):
         if not self.intransition:
@@ -248,15 +245,10 @@ class FailPlay(Ui_MainWindow, QtWidgets.QMainWindow):
         if not self.invstatusbars:
             self._status_update(self.pgbSongProgress, source)
             self._status_update(self.pgbSongProgressPrev, prev)
-            self.sldCrossfade.setValue(int(fac * 100))
-            self.anzSong(srcdata)
-            self.anzPrev(prevdata)
         else:
             self._status_update(self.pgbSongProgressPrev, source)
             self._status_update(self.pgbSongProgress, prev)
-            self.sldCrossfade.setValue(int((1 - fac) * 100))
-            self.anzPrev(srcdata)
-            self.anzSong(prevdata)
+        self.ledViz.update_crossfade(srcdata, prevdata, fac)
 
 
 
