@@ -39,7 +39,7 @@ class Source(QtCore.QObject):
     def __init__(self, path):
         QtCore.QObject.__init__(self)
         self.path  = path
-        self.fd    = Decoder(path)
+        self.fd    = Decoder(path, want_samplerate=48000)
         self.title = (path.rsplit('/', 1)[1] if "/" in path else path).rsplit('.', 1)[0]
         self.fd.dump_format()
 
@@ -527,7 +527,7 @@ class Player(QtCore.QThread):
 
     def __init__(self, pcm, playlist):
         QtCore.QThread.__init__(self)
-        self.pcm      = ao.AudioDevice(pcm)
+        self.pcm      = ao.AudioDevice(pcm, bits=16, rate=48000, channels=2)
         self.source   = None
         self.playlist = playlist
         self.shutdown = False
