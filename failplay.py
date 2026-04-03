@@ -248,13 +248,13 @@ class FailPlay(Ui_MainWindow, QtWidgets.QMainWindow):
         if not self.invstatusbars:
             self._status_update(self.pgbSongProgress, source)
             self._status_update(self.pgbSongProgressPrev, prev)
-            self.sldCrossfade.setValue(fac * 100)
+            self.sldCrossfade.setValue(int(fac * 100))
             self.anzSong(srcdata)
             self.anzPrev(prevdata)
         else:
             self._status_update(self.pgbSongProgressPrev, source)
             self._status_update(self.pgbSongProgress, prev)
-            self.sldCrossfade.setValue((1 - fac) * 100)
+            self.sldCrossfade.setValue(int((1 - fac) * 100))
             self.anzPrev(srcdata)
             self.anzSong(prevdata)
 
