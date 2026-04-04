@@ -197,12 +197,10 @@ class FailPlay(Ui_MainWindow, QtWidgets.QMainWindow):
             self.playlist.dequeue(self.playlist[index])
 
     def onRepeatTriggered(self):
-        if (index := next(iter(self.lstPlaylist.selectedIndexes()), None)) is not None:
-            self.playlist.toggleRepeat(self.playlist[index])
+        self.playlist.toggleRepeat(self.playlist[self.selected_or_current_index])
 
     def onStopAfterTriggered(self):
-        if (index := next(iter(self.lstPlaylist.selectedIndexes()), None)) is not None:
-            self.playlist.toggleStopAfter(self.playlist[index])
+        self.playlist.toggleStopAfter(self.playlist[self.selected_or_current_index])
 
     def closeEvent(self, ev):
         self.player.stop()
