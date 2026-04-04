@@ -29,6 +29,7 @@ from PyQt5 import Qt, QtCore, QtGui, QtWidgets
 
 from failaudio   import Playlist, Player
 from ui_failplay import Ui_MainWindow
+from failweb     import WebServer
 
 
 def mkIcon():
@@ -321,6 +322,8 @@ if __name__ == '__main__':
     parser.add_option("-q", "--enqueue",  help="Enqueue the tracks named on the command line.", action="store_true", default=None)
     parser.add_option("-p", "--playlist", help="A file to initialize the playlist from.", default=None)
     parser.add_option("-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.", default=None)
+    parser.add_option("--web", dest="web", metavar="PORT",
+        help="Enable the web interface on the given port (e.g. --web 8080).", default=None)
     options, posargs = parser.parse_args()
 
     conf_path = os.path.join(os.environ["HOME"], ".failplay", "failplay.conf")
@@ -356,6 +359,10 @@ if __name__ == '__main__':
             ply.playlist.enqueue(filename)
         else:
             ply.playlist.append(filename)
+
+    web_port = getconf("web")
+    if web_port is not None:
+        WebServer(ply.playlist, ply.player, getconf("musicdir", os.environ["HOME"]), int(web_port)).start()
 
     ply.show()
     ply.start()
