@@ -119,8 +119,8 @@ body { display: flex; flex-direction: column; }
 }
 .lib-entry:hover { background: var(--bg3); }
 .lib-entry.dir   { color: var(--accent); }
-.lib-entry.dir::before  { content: '\25b8 '; }
-.lib-entry.file::before { content: '\00a0\00a0 '; }
+.lib-entry.dir::before  { content: '▸ '; }
+.lib-entry.file::before { content: '\u00a0\u00a0 '; }
 
 /* ── playlist panel ──────────────────────────────────── */
 #pl-panel    { flex: 1; overflow-y: auto; }
