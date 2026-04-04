@@ -70,7 +70,7 @@ class LedVizWidget(QtWidgets.QWidget):
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
-        self._timer.start(16)   # ~60 fps
+        self._timer.start(33)   # ~30 fps
 
         self.setMinimumHeight(130)
         self.setSizePolicy(
@@ -207,7 +207,7 @@ class LedVizWidget(QtWidgets.QWidget):
 
     def paintEvent(self, event):
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
+
 
         W = self.width()
         H = self.height()
@@ -291,7 +291,7 @@ class LedVizWidget(QtWidgets.QWidget):
                         g_c = int(0   + t * 15)
                         b_c = int(195 - t * 35)
                         p.setBrush(QBrush(QColor(r_c, g_c, b_c, prv_a)))
-                        p.drawRoundedRect(rx, ry, rw, rh, rad, rad)
+                        p.drawRect(rx, ry, rw, rh)
 
                     # Current track layer
                     if is_lit:
@@ -306,11 +306,11 @@ class LedVizWidget(QtWidgets.QWidget):
                             c   = self._row_colors[drow]
                             clr = QColor(c.red(), c.green(), c.blue(), cur_a)
                         p.setBrush(QBrush(clr))
-                        p.drawRoundedRect(rx, ry, rw, rh, rad, rad)
+                        p.drawRect(rx, ry, rw, rh)
 
                     if not is_lit and not is_plit:
                         p.setBrush(inactive_brush)
-                        p.drawRoundedRect(rx, ry, rw, rh, rad, rad)
+                        p.drawRect(rx, ry, rw, rh)
 
                 else:
                     if is_lit:
@@ -318,11 +318,10 @@ class LedVizWidget(QtWidgets.QWidget):
                         # Soft glow halo
                         ge = 2
                         p.setBrush(QBrush(QColor(c.red(), c.green(), c.blue(), 30)))
-                        p.drawRoundedRect(rx - ge, ry - ge, rw + ge*2, rh + ge*2,
-                                          rad * 2, rad * 2)
+                        p.drawRect(rx - ge, ry - ge, rw + ge*2, rh + ge*2)
                         # LED itself
                         p.setBrush(QBrush(c))
-                        p.drawRoundedRect(rx, ry, rw, rh, rad, rad)
+                        p.drawRect(rx, ry, rw, rh)
                     else:
                         # Inactive LED — very dark, barely visible
                         # Occasional single-cell shimmer for idle life
@@ -330,7 +329,7 @@ class LedVizWidget(QtWidgets.QWidget):
                         if (self._frame + col * 7 + row * 13) % 200 == 0:
                             a = 175
                         p.setBrush(QBrush(QColor(16, 22, 32, a)))
-                        p.drawRoundedRect(rx, ry, rw, rh, rad, rad)
+                        p.drawRect(rx, ry, rw, rh)
 
             # ── Peak dot ──────────────────────────────────────────────────────
             if not self._in_xfade:
@@ -342,14 +341,14 @@ class LedVizWidget(QtWidgets.QWidget):
                                  min(255, bc.green() + 60),
                                  min(255, bc.blue() + 60))
                     p.setBrush(QBrush(pkc))
-                    p.drawRoundedRect(int(cx), int(py), max(1, int(lw)), max(1, int(lh)), rad, rad)
+                    p.drawRect(int(cx), int(py), max(1, int(lw)), max(1, int(lh)))
             else:
                 # Ghost peak (outgoing track) — glimmering afterimage
                 if ppk > 0.01:
                     py = my + ppk_row * row_step
                     pa = max(0, int((1.0 - xf) * 195))
                     p.setBrush(QBrush(QColor(210, 80, 255, pa)))
-                    p.drawRoundedRect(int(cx), int(py), max(1, int(lw)), max(1, int(lh)), rad, rad)
+                    p.drawRect(int(cx), int(py), max(1, int(lw)), max(1, int(lh)))
                 # Current peak
                 if pk > 0.01:
                     py    = my + pk_row * row_step
@@ -360,7 +359,7 @@ class LedVizWidget(QtWidgets.QWidget):
                                    min(255, bc.green() + 60),
                                    min(255, bc.blue() + 60), pka)
                     p.setBrush(QBrush(pkc))
-                    p.drawRoundedRect(int(cx), int(py), max(1, int(lw)), max(1, int(lh)), rad, rad)
+                    p.drawRect(int(cx), int(py), max(1, int(lw)), max(1, int(lh)))
 
         # ── Crossfade sweep (soft horizontal pulse) ────────────────────────────
         if self._sweep_t >= 0.0:
