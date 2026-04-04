@@ -238,7 +238,6 @@ class LedVizWidget(QtWidgets.QWidget):
 
         lw  = (mw - GAP * (C - 1)) / C
         lh  = (mh - GAP * (R - 1)) / R
-        rad = min(lw, lh) * 0.22
 
         col_step = lw + GAP
         row_step = lh + GAP
