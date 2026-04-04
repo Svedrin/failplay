@@ -133,15 +133,12 @@ class FailPlay(Ui_MainWindow, QtWidgets.QMainWindow):
 
     @property
     def selected_or_current_index(self):
-        if self.lstPlaylist.selectedIndexes():
-            return self.lstPlaylist.selectedIndexes()[0]
+        if (index := next(iter(self.lstPlaylist.selectedIndexes()), None)) is not None:
+            return index
         return self.playlist.current_index
 
     def save_selection(self):
-        if self.lstPlaylist.selectedIndexes():
-            self.selection = self.lstPlaylist.selectedIndexes()[0]
-        else:
-            self.selection = None
+        self.selection = next(iter(self.lstPlaylist.selectedIndexes()), None)
 
     def restore_selection(self):
         if self.selection is not None:
@@ -188,24 +185,24 @@ class FailPlay(Ui_MainWindow, QtWidgets.QMainWindow):
         self.playlist.append(self.library.filePath(index))
 
     def onRemoveTriggered(self):
-        index = self.lstPlaylist.selectedIndexes()[0]
-        self.playlist.remove(self.playlist[index])
+        if (index := next(iter(self.lstPlaylist.selectedIndexes()), None)) is not None:
+            self.playlist.remove(self.playlist[index])
 
     def onEnqueueTriggered(self):
-        index = self.lstPlaylist.selectedIndexes()[0]
-        self.playlist.enqueue(self.playlist[index])
+        if (index := next(iter(self.lstPlaylist.selectedIndexes()), None)) is not None:
+            self.playlist.enqueue(self.playlist[index])
 
     def onDequeueTriggered(self):
-        index = self.lstPlaylist.selectedIndexes()[0]
-        self.playlist.dequeue(self.playlist[index])
+        if (index := next(iter(self.lstPlaylist.selectedIndexes()), None)) is not None:
+            self.playlist.dequeue(self.playlist[index])
 
     def onRepeatTriggered(self):
-        index = self.lstPlaylist.selectedIndexes()[0]
-        self.playlist.toggleRepeat(self.playlist[index])
+        if (index := next(iter(self.lstPlaylist.selectedIndexes()), None)) is not None:
+            self.playlist.toggleRepeat(self.playlist[index])
 
     def onStopAfterTriggered(self):
-        index = self.lstPlaylist.selectedIndexes()[0]
-        self.playlist.toggleStopAfter(self.playlist[index])
+        if (index := next(iter(self.lstPlaylist.selectedIndexes()), None)) is not None:
+            self.playlist.toggleStopAfter(self.playlist[index])
 
     def closeEvent(self, ev):
         self.player.stop()
