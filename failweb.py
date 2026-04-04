@@ -290,6 +290,14 @@ function App() {
             });
         },
 
+        dequeue(path) {
+            fetch('/api/dequeue', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ path }),
+            });
+        },
+
         toggleRepeat(path) {
             fetch('/api/repeat', {
                 method:  'POST',
@@ -316,6 +324,7 @@ function App() {
             if (!path) return;
             const a = btn.dataset.action;
             if      (a === 'enqueue')   this.enqueue(path);
+            else if (a === 'dequeue')   this.dequeue(path);
             else if (a === 'repeat')    this.toggleRepeat(path);
             else if (a === 'stopafter') this.toggleStopAfter(path);
         },
@@ -363,7 +372,9 @@ ${t.repeat    ? '<span title="Repeat">\u267b</span>'     : ''}\
 ${t.stopafter ? '<span title="Stop after">\u25fe</span>' : ''}\
 ${t.queue_pos ? `<span class="qpos" title="Queue position">${t.queue_pos}</span>` : ''}</td>
   <td class="td-actions">
-    <button data-action="enqueue"   title="Enqueue next">+</button>
+    ${t.queue_pos
+        ? `<button data-action="dequeue" title="Dequeue">\u2212</button>`
+        : `<button data-action="enqueue" title="Enqueue next">+</button>`}
     <button data-action="repeat"    title="Repeat"      class="${t.repeat    ? 'active' : ''}">\u267b</button>
     <button data-action="stopafter" title="Stop after"  class="${t.stopafter ? 'active' : ''}">\u25fe</button>
   </td>
@@ -425,6 +436,7 @@ class WebServer:
         # Any signal that changes visible state triggers a broadcast.
         playlist.sig_datachg.connect(lambda *_: self._broadcast())
         playlist.sig_append.connect( lambda *_: self._broadcast())
+        playlist.sig_remove.connect( lambda *_: self._broadcast())
         playlist.sig_enqueue.connect(lambda *_: self._broadcast())
         playlist.sig_dequeue.connect(lambda *_: self._broadcast())
         player.sig_started.connect(  lambda *_: self._broadcast())
@@ -569,6 +581,12 @@ class WebServer:
                         if p in server.playlist:
                             server.playlist.toggleRepeat(p)
                     server._dispatch(_repeat)
+                    self._json({'ok': True})
+
+                elif parsed.path == '/api/dequeue':
+                    def _dequeue(p=path):
+                        server.playlist.dequeue(p)
+                    server._dispatch(_dequeue)
                     self._json({'ok': True})
 
                 elif parsed.path == '/api/stopafter':
