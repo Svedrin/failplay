@@ -35,6 +35,7 @@ HTML = """\
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>failplay</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -144,6 +145,44 @@ body { display: flex; flex-direction: column; }
 .td-flags .qpos { color: var(--queue); }
 .td-actions { width: 6.5em; white-space: nowrap; text-align: right; }
 
+/* ── tab bar (mobile only) ───────────────────────────── */
+#tab-bar {
+  display: none;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+}
+#tab-bar button {
+  flex: 1;
+  padding: 11px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--dim);
+  font-size: 13px;
+  font-family: inherit;
+  background: none;
+  cursor: pointer;
+}
+#tab-bar button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── responsive ──────────────────────────────────────── */
+@media (max-width: 700px) {
+  #tab-bar      { display: flex; }
+  #main         { flex-direction: column; }
+  #lib-panel    { width: 100%; min-width: 0; border-right: none; }
+
+  #main.tab-library  #pl-panel  { display: none; }
+  #main.tab-playlist #lib-panel { display: none; }
+
+  .lib-entry    { min-height: 44px; display: flex; align-items: center; }
+  #pl-table td  { padding: 8px 5px; }
+  .td-actions button { min-height: 34px; padding: 4px 8px; }
+}
+
 /* ── buttons ─────────────────────────────────────────── */
 button {
   background: none;
@@ -168,6 +207,11 @@ button + button      { margin-left: 2px; }
   <span class="bullet">&#9632;</span>
   <span id="now-playing">&mdash;</span>
 </div>
+
+<nav id="tab-bar">
+  <button data-tab="playlist">Playlist</button>
+  <button data-tab="library">Library</button>
+</nav>
 
 <div id="main">
   <div id="lib-panel">
@@ -232,6 +276,7 @@ function App() {
         libPath:         '',
         libStack:        [],
         libraryRootName: '',
+        tab:             'playlist',
 
         // ── lifecycle (x-init) ────────────────────────
         init() {
@@ -242,6 +287,11 @@ function App() {
                 .addEventListener('click', ev => this._libraryClick(ev));
             document.getElementById('breadcrumb')
                 .addEventListener('click', ev => this._breadcrumbClick(ev));
+            document.getElementById('tab-bar')
+                .addEventListener('click', ev => {
+                    const btn = ev.target.closest('button[data-tab]');
+                    if (btn) this.switchTab(btn.dataset.tab);
+                });
 
             // SSE stream: server pushes state on every change
             const es = new EventSource('/events');
@@ -275,6 +325,10 @@ function App() {
         navigateToIdx(idx) {
             this.libStack = this.libStack.slice(0, idx + 1);
             this.browse(this.libStack[idx].path);
+        },
+
+        switchTab(name) {
+            this.tab = name;
         },
 
         navigateRoot() {
@@ -352,9 +406,17 @@ function App() {
         // Sub-renders are split by region so each is easy to follow.
 
         render() {
+            this.$tabs();
             this.$nowPlaying();
             this.$playlist();
             this.$library();
+        },
+
+        $tabs() {
+            document.getElementById('main').className = 'tab-' + this.tab;
+            document.querySelectorAll('#tab-bar button[data-tab]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === this.tab);
+            });
         },
 
         $nowPlaying() {
