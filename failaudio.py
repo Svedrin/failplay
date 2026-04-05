@@ -17,6 +17,7 @@
 """
 
 import sys
+import random
 
 from os.path import exists
 from shutil import copyfile
@@ -365,6 +366,14 @@ class Playlist(QtCore.QAbstractTableModel):
             self.dequeue(path)
         else:
             self.enqueue(path)
+
+    def randomize(self):
+        """ Enqueue all playlist items not already in the queue, in random order. """
+        unenqueued = [p for p in self.playlist if p not in self.jmpqueue]
+        random.shuffle(unenqueued)
+        for path in unenqueued:
+            self.enqueue(path)
+        return self
 
     def toggleRepeat(self, path):
         idx = self.playlist.index(path)

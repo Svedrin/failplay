@@ -109,6 +109,11 @@ class FailPlay(Ui_MainWindow, QtWidgets.QMainWindow):
         self.actStopAfter.setShortcut(Qt.Qt.Key_S)
         self.lstPlaylist.insertAction(None, self.actStopAfter)
 
+        self.actRandomize = QtWidgets.QAction("Randomize", self.lstPlaylist)
+        self.actRandomize.triggered.connect(lambda checked: self.playlist.randomize())
+        self.actRandomize.setShortcut(Qt.Qt.Key_Z)
+        self.lstPlaylist.insertAction(None, self.actRandomize)
+
         def mkShortcut(key, callback):
             shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(key), self)
             shortcut.setContext(Qt.Qt.ApplicationShortcut)

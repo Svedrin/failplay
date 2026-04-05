@@ -206,6 +206,7 @@ button + button      { margin-left: 2px; }
   <span class="logo">failplay</span>
   <span class="bullet">&#9632;</span>
   <span id="now-playing">&mdash;</span>
+  <button id="btn-randomize" title="Enqueue all unqueued tracks in random order" style="margin-left:auto">&#x1f500; randomize</button>
 </div>
 
 <nav id="tab-bar">
@@ -292,6 +293,8 @@ function App() {
                     const btn = ev.target.closest('button[data-tab]');
                     if (btn) this.switchTab(btn.dataset.tab);
                 });
+            document.getElementById('btn-randomize')
+                .addEventListener('click', () => this.randomize());
 
             // SSE stream: server pushes state on every change
             const es = new EventSource('/events');
@@ -366,6 +369,10 @@ function App() {
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify({ path }),
             });
+        },
+
+        randomize() {
+            fetch('/api/randomize', { method: 'POST' });
         },
 
         // ── event delegation (keeps render() output clean) ─
@@ -624,6 +631,11 @@ class WebServer:
                     body = json.loads(self.rfile.read(length)) if length else {}
                 except json.JSONDecodeError:
                     self.send_error(400)
+                    return
+
+                if parsed.path == '/api/randomize':
+                    server._dispatch(server.playlist.randomize)
+                    self._json({'ok': True})
                     return
 
                 path = body.get('path', '').strip()
