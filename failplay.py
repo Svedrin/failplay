@@ -114,6 +114,11 @@ class FailPlay(Ui_MainWindow, QtWidgets.QMainWindow):
         self.actRandomize.setShortcut(Qt.Qt.Key_Z)
         self.lstPlaylist.insertAction(None, self.actRandomize)
 
+        self.actClearQueue = QtWidgets.QAction("Clear queue", self.lstPlaylist)
+        self.actClearQueue.triggered.connect(lambda checked: self.playlist.clear_queue())
+        self.actClearQueue.setShortcut(Qt.Qt.Key_X)
+        self.lstPlaylist.insertAction(None, self.actClearQueue)
+
         def mkShortcut(key, callback):
             shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(key), self)
             shortcut.setContext(Qt.Qt.ApplicationShortcut)

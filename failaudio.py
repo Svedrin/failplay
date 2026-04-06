@@ -375,6 +375,12 @@ class Playlist(QtCore.QAbstractTableModel):
             self.enqueue(path)
         return self
 
+    def clear_queue(self):
+        """ Remove all items from the queue without changing the playlist. """
+        for path in list(self.jmpqueue):
+            self.dequeue(path)
+        return self
+
     def toggleRepeat(self, path):
         idx = self.playlist.index(path)
         if self.repeat == idx:

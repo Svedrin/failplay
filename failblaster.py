@@ -232,7 +232,7 @@ if __name__ == '__main__':
             elif lib_filter_mode:
                 hints = "Type to filter  Enter/Esc:done"
             else:
-                hints = "Tab:library  Space:queue  r:repeat  s:stop-after  z:randomize  Del:remove  q:quit"
+                hints = "Tab:library  Space:queue  r:repeat  s:stop-after  z:randomize  x:clear-queue  Del:remove  q:quit"
             try:
                 stdscr.addstr(maxy - 2, 0, hints[:maxx - 1], curses.A_DIM)
             except curses.error:
@@ -321,6 +321,8 @@ if __name__ == '__main__':
                     p.toggleRepeat( p[pl_cursor] )
                 elif c == ord("z"):
                     p.randomize()
+                elif c == ord("x"):
+                    p.clear_queue()
                 elif c == curses.KEY_DC:
                     if len(p) > 0:
                         p.remove(p[pl_cursor])

@@ -207,6 +207,7 @@ button + button      { margin-left: 2px; }
   <span class="bullet">&#9632;</span>
   <span id="now-playing">&mdash;</span>
   <button id="btn-randomize" title="Enqueue all unqueued tracks in random order" style="margin-left:auto">&#x1f500; randomize</button>
+  <button id="btn-clearqueue" title="Remove all tracks from the queue">&#x2715; clear queue</button>
 </div>
 
 <nav id="tab-bar">
@@ -295,6 +296,8 @@ function App() {
                 });
             document.getElementById('btn-randomize')
                 .addEventListener('click', () => this.randomize());
+            document.getElementById('btn-clearqueue')
+                .addEventListener('click', () => this.clearQueue());
 
             // SSE stream: server pushes state on every change
             const es = new EventSource('/events');
@@ -373,6 +376,10 @@ function App() {
 
         randomize() {
             fetch('/api/randomize', { method: 'POST' });
+        },
+
+        clearQueue() {
+            fetch('/api/clearqueue', { method: 'POST' });
         },
 
         // ── event delegation (keeps render() output clean) ─
@@ -635,6 +642,11 @@ class WebServer:
 
                 if parsed.path == '/api/randomize':
                     server._dispatch(server.playlist.randomize)
+                    self._json({'ok': True})
+                    return
+
+                if parsed.path == '/api/clearqueue':
+                    server._dispatch(server.playlist.clear_queue)
                     self._json({'ok': True})
                     return
 
