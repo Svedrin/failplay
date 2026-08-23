@@ -9,10 +9,16 @@ dep:
 		python3-setuptools \
 		python3-pyqt5 \
 		pyqt5-dev-tools \
+		python3-pyao \
+		libao-dev \
 		libavcodec-dev \
 		libavformat-dev \
 		libavutil-dev \
-		libswresample-dev
+		libswresample-dev \
+		python3-behave
+
+test: all
+	QT_QPA_PLATFORM=offscreen behave
 
 ui_failplay.py: failplay.ui
 	pyuic5 -o $@ $^
