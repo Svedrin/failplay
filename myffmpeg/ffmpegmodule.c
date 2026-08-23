@@ -379,11 +379,11 @@ static PyObject* ffmpeg_resampler_new( PyTypeObject* type, PyObject* args, PyObj
 	}
 
 	AVChannelLayout in_ch_layout  = AV_CHANNEL_LAYOUT_MASK(
-		av_get_channel_layout_nb_channels(self->input_channel_layout),
+		av_popcount64(self->input_channel_layout),
 		self->input_channel_layout
 	);
 	AVChannelLayout out_ch_layout = AV_CHANNEL_LAYOUT_MASK(
-		av_get_channel_layout_nb_channels(self->output_channel_layout),
+		av_popcount64(self->output_channel_layout),
 		self->output_channel_layout
 	);
 
@@ -452,7 +452,7 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 		self->output_rate, self->input_rate, AV_ROUND_UP
 	);
 
-	int out_channels = av_get_channel_layout_nb_channels(self->output_channel_layout);
+	int out_channels = av_popcount64(self->output_channel_layout);
 
 	if( av_samples_alloc_array_and_samples(&outbuf, NULL,
 			out_channels, outnb, self->output_sample_format, 0) < 0 ){
