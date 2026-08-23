@@ -41,6 +41,7 @@ def before_scenario(context, scenario):
     context.sse_event = None
     context.stop_message = None
     context.peeked = "__unset__"
+    context.extra_tmpdirs = []
 
 
 def after_scenario(context, scenario):
@@ -52,3 +53,5 @@ def after_scenario(context, scenario):
         except Exception:
             pass
     shutil.rmtree(context.tmpdir, ignore_errors=True)
+    for extra_tmpdir in context.extra_tmpdirs:
+        shutil.rmtree(extra_tmpdir, ignore_errors=True)

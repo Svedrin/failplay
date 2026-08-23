@@ -2,6 +2,7 @@
 import json
 import os
 import socket
+import tempfile
 import time
 from types import SimpleNamespace
 from urllib.parse import quote, urlparse
@@ -42,15 +43,14 @@ def step_impl(context, dirname, tracks):
         register_path(context, name, path)
 
 
-@given(u'the web server is running')
-def step_impl(context):
+def _start_web_server(context, uploaddir=None):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(("127.0.0.1", 0))
     port = sock.getsockname()[1]
     sock.close()
 
     fake_player = SimpleNamespace(sig_started=SimpleNamespace(connect=lambda *a, **k: None))
-    context.webserver = WebServer(context.playlist, fake_player, context.tmpdir, port)
+    context.webserver = WebServer(context.playlist, fake_player, context.tmpdir, port, uploaddir=uploaddir)
     context.webserver.start()
     context.base_url = "http://127.0.0.1:%d" % port
 
@@ -61,6 +61,43 @@ def step_impl(context):
             break
         except requests.exceptions.ConnectionError:
             time.sleep(0.02)
+
+
+@given(u'the web server is running')
+def step_impl(context):
+    _start_web_server(context)
+
+
+@given(u'the web server is running with uploads enabled')
+def step_impl(context):
+    uploaddir = os.path.join(context.tmpdir, "uploads")
+    register_path(context, "uploads_dir", uploaddir)
+    context.uploaddir = uploaddir
+    _start_web_server(context, uploaddir=uploaddir)
+
+
+@given(u'the web server is running with an uploads directory outside the media library')
+def step_impl(context):
+    uploaddir = tempfile.mkdtemp(prefix="failplay-behave-outside-")
+    context.extra_tmpdirs.append(uploaddir)
+    context.uploaddir = uploaddir
+    _start_web_server(context, uploaddir=uploaddir)
+
+
+@given(u'the web server is running with uploads enabled in "{relpath:Quoted}"')
+def step_impl(context, relpath):
+    uploaddir = os.path.normpath(os.path.join(context.tmpdir, relpath))
+    register_path(context, "uploads_dir", uploaddir)
+    context.uploaddir = uploaddir
+    _start_web_server(context, uploaddir=uploaddir)
+
+
+@given(u'the web server is running with uploads enabled in the library root')
+def step_impl(context):
+    uploaddir = context.tmpdir
+    register_path(context, "uploads_dir", uploaddir)
+    context.uploaddir = uploaddir
+    _start_web_server(context, uploaddir=uploaddir)
 
 
 def _wait_for_dispatch(context):
@@ -136,6 +173,24 @@ def step_impl(context, route, body):
     _wait_for_dispatch(context)
 
 
+@when(u'I upload the file "{name:Quoted}" with content "{content:Quoted}"')
+def step_impl(context, name, content):
+    context.response = requests.post(
+        context.base_url + "/api/upload",
+        params={"filename": name},
+        data=content.encode("utf-8"),
+        headers={"Content-Type": "application/octet-stream"},
+        timeout=5,
+    )
+
+
+@given(u'a file "{name:Quoted}" with content "{content:Quoted}" already exists in the uploads directory')
+def step_impl(context, name, content):
+    os.makedirs(context.uploaddir, exist_ok=True)
+    with open(os.path.join(context.uploaddir, name), "w", encoding="utf-8") as f:
+        f.write(content)
+
+
 # ── Then: HTTP response assertions ───────────────────────────────────────
 
 @then(u'the response status should be {code:d}')
@@ -185,3 +240,40 @@ def step_impl(context, name):
     entries = context.response.json()
     assert any(e["name"] == name and e["is_dir"] for e in entries), \
         "no directory entry named %r in %r" % (name, entries)
+
+
+@then(u'the JSON response should report uploads as enabled')
+def step_impl(context):
+    data = context.response.json()
+    assert data["uploadsEnabled"] is True, "expected uploadsEnabled: True, got %r" % (data.get("uploadsEnabled"),)
+
+
+@then(u'the JSON response should report uploads as disabled')
+def step_impl(context):
+    data = context.response.json()
+    assert data["uploadsEnabled"] is False, "expected uploadsEnabled: False, got %r" % (data.get("uploadsEnabled"),)
+
+
+@then(u'the uploads directory should exist')
+def step_impl(context):
+    assert os.path.isdir(context.uploaddir), "expected %r to exist" % (context.uploaddir,)
+
+
+@then(u'the uploads directory should not exist yet')
+def step_impl(context):
+    assert not os.path.exists(context.uploaddir), "expected %r not to exist yet" % (context.uploaddir,)
+
+
+@then(u'the uploads directory should contain a file "{name:Quoted}" with content "{content:Quoted}"')
+def step_impl(context, name, content):
+    path = os.path.join(context.uploaddir, name)
+    assert os.path.isfile(path), "expected %r to exist" % (path,)
+    with open(path, "r", encoding="utf-8") as f:
+        actual = f.read()
+    assert actual == content, "expected content %r, got %r" % (content, actual)
+
+
+@then(u'the uploads directory should not contain a file "{name:Quoted}"')
+def step_impl(context, name):
+    path = os.path.join(context.uploaddir, name)
+    assert not os.path.exists(path), "expected %r not to exist" % (path,)

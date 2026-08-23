@@ -98,15 +98,22 @@ body { display: flex; flex-direction: column; }
   padding: 5px 8px;
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#breadcrumb-crumbs {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex-shrink: 0;
-  font-size: 12px;
+  flex: 1;
 }
 .crumb       { color: var(--accent); cursor: pointer; }
 .crumb:hover { text-decoration: underline; }
 .sep         { color: var(--dim); margin: 0 2px; }
+#btn-upload  { flex-shrink: 0; }
 
 #lib-entries { overflow-y: auto; flex: 1; }
 
@@ -217,7 +224,12 @@ button + button      { margin-left: 2px; }
 
 <div id="main">
   <div id="lib-panel">
-    <div id="breadcrumb"></div>
+    <div id="breadcrumb">
+      <span id="breadcrumb-crumbs"></span>
+      <button id="btn-upload" type="button" title="Upload a file into the uploads folder" style="display:none">&#8679; upload</button>
+    </div>
+    <input type="file" id="upload-input" multiple hidden
+           accept=".mp3,.flac,.ogg,.opus,.m4a,.wav,.aac,.wma,.ape,.mpc">
     <div id="lib-entries"></div>
   </div>
   <div id="pl-panel">
@@ -278,6 +290,7 @@ function App() {
         libPath:         '',
         libStack:        [],
         libraryRootName: '',
+        uploadsEnabled:  false,
         tab:             'playlist',
 
         // ── lifecycle (x-init) ────────────────────────
@@ -298,6 +311,13 @@ function App() {
                 .addEventListener('click', () => this.randomize());
             document.getElementById('btn-clearqueue')
                 .addEventListener('click', () => this.clearQueue());
+            document.getElementById('btn-upload')
+                .addEventListener('click', () => document.getElementById('upload-input').click());
+            document.getElementById('upload-input')
+                .addEventListener('change', ev => {
+                    this.uploadFiles(ev.target.files);
+                    ev.target.value = '';
+                });
 
             // SSE stream: server pushes state on every change
             const es = new EventSource('/events');
@@ -382,6 +402,21 @@ function App() {
             fetch('/api/clearqueue', { method: 'POST' });
         },
 
+        uploadFiles(fileList) {
+            Array.from(fileList).forEach(file => this.uploadFile(file));
+        },
+
+        uploadFile(file) {
+            fetch('/api/upload?filename=' + encodeURIComponent(file.name), {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/octet-stream' },
+                body:    file,
+            }).then(r => {
+                if (r.ok) this.browse(this.libPath);
+                else       alert(`Upload of "${file.name}" failed: ${r.status} ${r.statusText}`);
+            });
+        },
+
         // ── event delegation (keeps render() output clean) ─
         _playlistClick(ev) {
             const btn = ev.target.closest('button[data-action]');
@@ -459,12 +494,14 @@ ${t.queue_pos ? `<span class="qpos" title="Queue position">${t.queue_pos}</span>
 
         $library() {
             const rootName = esc(this.libraryRootName || '~');
-            document.getElementById('breadcrumb').innerHTML =
+            document.getElementById('breadcrumb-crumbs').innerHTML =
                 `<span class="crumb" data-idx="-1">${rootName}</span>` +
                 this.libStack.map((e, i) =>
                     `<span class="sep">/</span>` +
                     `<span class="crumb" data-idx="${i}">${esc(e.name)}</span>`
                 ).join('');
+
+            document.getElementById('btn-upload').style.display = this.uploadsEnabled ? '' : 'none';
 
             document.getElementById('lib-entries').innerHTML =
                 this.library.map((e, i) =>
@@ -494,11 +531,31 @@ class WebServer:
     from the correct thread.  State is pushed to connected browsers via SSE.
     """
 
-    def __init__(self, playlist, player, librarydir, port=8080):
+    def __init__(self, playlist, player, librarydir, port=8080, uploaddir=None):
         self.playlist   = playlist
         self.player     = player
         self.librarydir = os.path.normpath(librarydir)
         self.port       = port
+
+        # Uploads are disabled unless uploaddir is configured, and it must
+        # live within librarydir (at any depth, including librarydir
+        # itself) -- uploaded files may never end up outside the library.
+        # The directory itself is created lazily on first upload.
+        if uploaddir:
+            normalized = os.path.normpath(uploaddir)
+            within_library = normalized == self.librarydir or normalized.startswith(self.librarydir + os.sep)
+        else:
+            normalized = None
+            within_library = False
+
+        if within_library:
+            self.uploaddir       = normalized
+            self.uploads_enabled = True
+        else:
+            if uploaddir:
+                print(f"[web] uploaddir {uploaddir!r} is not within the music library {self.librarydir!r}; uploads disabled")
+            self.uploaddir       = None
+            self.uploads_enabled = False
 
         self._sse_clients = []
         self._sse_lock    = threading.Lock()
@@ -570,6 +627,7 @@ class WebServer:
                 for i, path in enumerate(pl.playlist)
             ],
             'libraryRootName': os.path.basename(self.librarydir) or self.librarydir,
+            'uploadsEnabled':  self.uploads_enabled,
         }
 
     def _get_library(self, dirpath):
@@ -633,6 +691,11 @@ class WebServer:
 
             def do_POST(self):
                 parsed = urlparse(self.path)
+
+                if parsed.path == '/api/upload':
+                    self._upload(parsed)
+                    return
+
                 length = int(self.headers.get('Content-Length', 0))
                 try:
                     body = json.loads(self.rfile.read(length)) if length else {}
@@ -684,6 +747,40 @@ class WebServer:
 
                 else:
                     self.send_error(404)
+
+            def _upload(self, parsed):
+                if not server.uploads_enabled:
+                    self.send_error(403, "Uploads are disabled")
+                    return
+
+                qs   = parse_qs(parsed.query)
+                name = unquote(qs.get('filename', [''])[0]).strip()
+
+                if not name or '/' in name or '\\' in name or name in ('.', '..'):
+                    self.send_error(400, "Invalid filename")
+                    return
+
+                if os.path.splitext(name)[1].lower() not in AUDIO_EXTENSIONS:
+                    self.send_error(400, "Unsupported file type")
+                    return
+
+                length = int(self.headers.get('Content-Length', 0))
+                if length <= 0:
+                    self.send_error(400, "Empty upload")
+                    return
+
+                data = self.rfile.read(length)
+
+                os.makedirs(server.uploaddir, exist_ok=True)
+                target = os.path.join(server.uploaddir, name)
+                try:
+                    with open(target, 'xb') as f:
+                        f.write(data)
+                except FileExistsError:
+                    self.send_error(409, "A file with that name already exists")
+                    return
+
+                self._json({'ok': True, 'name': name, 'path': target})
 
             def _sse(self):
                 q = Queue()

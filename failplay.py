@@ -329,6 +329,8 @@ if __name__ == '__main__':
     parser.add_option("-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.", default=None)
     parser.add_option("--web", dest="web", metavar="PORT",
         help="Enable the web interface on the given port (e.g. --web 8080).", default=None)
+    parser.add_option("--uploaddir", dest="uploaddir", metavar="DIR",
+        help="Enable file uploads in the web interface. Must be <musicdir> itself or a directory within it.", default=None)
     options, posargs = parser.parse_args()
 
     conf_path = os.path.join(os.environ["HOME"], ".failplay", "failplay.conf")
@@ -367,7 +369,10 @@ if __name__ == '__main__':
 
     web_port = getconf("web")
     if web_port is not None:
-        WebServer(ply.playlist, ply.player, getconf("musicdir", os.environ["HOME"]), int(web_port)).start()
+        WebServer(
+            ply.playlist, ply.player, getconf("musicdir", os.environ["HOME"]), int(web_port),
+            uploaddir=getconf("uploaddir"),
+        ).start()
 
     ply.show()
     ply.start()
