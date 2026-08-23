@@ -15,7 +15,8 @@ dep:
 		libavformat-dev \
 		libavutil-dev \
 		libswresample-dev \
-		python3-behave
+		python3-behave \
+		python3-requests
 
 test: all
 	QT_QPA_PLATFORM=offscreen behave

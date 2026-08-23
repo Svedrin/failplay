@@ -1,0 +1,16 @@
+when:
+  - event: push
+  - event: pull_request
+  - event: manual
+
+labels:
+  arch: amd64
+
+steps:
+  - name: test
+    image: debian:trixie
+    commands:
+      - apt-get update -qq
+      - apt-get install -y -qq make sudo python3-audioop-lts
+      - make dep
+      - make test
