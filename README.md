@@ -28,7 +28,7 @@ FailPlay doesn't (and probably never will) have:
 Screenshots
 -----------
 
-![Screenshot](failplay.png).
+![Screenshot](failplay.png)
 
 FailAudio
 =========
@@ -48,7 +48,7 @@ Requirements
 Config
 ======
 
-FailPlay doesn't really need much configuration, but setting a bit of stuff in //~~/.failplay/failplay.conf// does make life more convenient. Here's my config file:
+FailPlay doesn't really need much configuration, but setting a bit of stuff in `~~/.failplay/failplay.conf` does make life more convenient. Here's my config file:
 
     [options]
     musicdir = /media/daten/Musik
@@ -65,6 +65,20 @@ connect to a remote PulseAudio server. The `options` section accepts the same va
 command line as long options.
 
 FailAudio supports a config file as well, and evaluates `~/.failplay/failaudio.conf` in the same manner.
+
+Both FailPlay and `failblaster` can also expose a web interface by adding `web` (and optionally
+`uploaddir`) to the `[options]` section:
+
+    [options]
+    web       = 8080
+    uploaddir = /media/daten/Musik/uploads
+
+`web` is the port to listen on; the web server stays disabled unless it's set. `uploaddir` enables
+uploading files through the web interface and is optional. Both can also be given on the command
+line as `--web` and `--uploaddir`.
+
+Both `failaudio` and `failblaster` load `~/.failplay/failplay.conf` and then load `~/.failplay/fail{audio,blaster}.conf`
+respectively, so that you can override certain settings while reusing most of them.
 
 Bluetooth speaker scripts
 =========================
