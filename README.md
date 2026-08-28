@@ -48,7 +48,7 @@ Requirements
 Config
 ======
 
-FailPlay doesn't really need much configuration, but setting a bit of stuff in `~~/.failplay/failplay.conf` does make life more convenient. Here's my config file:
+FailPlay doesn't really need much configuration, but setting a bit of stuff in `~/.failplay/failplay.conf` does make life more convenient. Here's my config file:
 
     [options]
     musicdir = /media/daten/Musik
