@@ -46,7 +46,7 @@ class Source(QtCore.QObject):
 
         if "replaygain_track_gain" in self.fd.metadata:
             self.gain_db  = float(self.fd.metadata["replaygain_track_gain"].split()[0])
-            self.gain_fac = 10 ** (self.gain_db / 10.)
+            self.gain_fac = 10 ** (self.gain_db / 20.)
             print("ReplayGain: %fdB = %f Gain" % (self.gain_db, self.gain_fac))
         else:
             self.gain_fac = 1
