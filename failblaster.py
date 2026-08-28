@@ -25,6 +25,7 @@ from configparser import ConfigParser
 from PyQt5 import Qt, QtCore
 
 from failaudio import Playlist, Player
+from failweb import WebServer
 
 
 AUDIO_EXTENSIONS = {'.mp3', '.flac', '.ogg', '.opus', '.m4a', '.wav', '.aac', '.wma', '.ape', '.mpc'}
@@ -64,6 +65,10 @@ if __name__ == '__main__':
     parser.add_option( "-p", "--playlist", help="A file to initialize the playlist from.")
     parser.add_option( "-w", "--writepls", help="A file to write the playlist into. Can be the same as -p.")
     parser.add_option( "-q", "--enqueue",  help="Enqueue the tracks named on the command line.", action="store_true", default=False)
+    parser.add_option("--web", dest="web", metavar="PORT",
+        help="Enable the web interface on the given port (e.g. --web 8080).", default=None)
+    parser.add_option("--uploaddir", dest="uploaddir", metavar="DIR",
+        help="Enable file uploads in the web interface. Must be <musicdir> itself or a directory within it.", default=None)
     options, posargs = parser.parse_args()
 
     conf = ConfigParser()
@@ -100,6 +105,13 @@ if __name__ == '__main__':
 
     app = QtCore.QCoreApplication([])
     player = Player(getconf("out", "pulse"), p)
+
+    web_port = getconf("web")
+    if web_port is not None:
+        WebServer(
+            p, player, getconf("musicdir") or os.environ["HOME"], int(web_port),
+            uploaddir=getconf("uploaddir"),
+        ).start()
 
     def main(stdscr):
         stdscr.nodelay(1)
