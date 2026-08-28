@@ -74,6 +74,7 @@ typedef struct {
 	AVStream        *pStream;
 	AVPacket        *pkt;
 	AVFrame         *frame;
+	int              streamIdx;
 } ffmpegDecoderObject;
 
 static PyObject* ffmpeg_decoder_new( PyTypeObject* type, PyObject* args ){
@@ -124,6 +125,7 @@ static PyObject* ffmpeg_decoder_new( PyTypeObject* type, PyObject* args ){
 	}
 
 	if( !err ){
+		self->streamIdx = streamIdx;
 		self->pStream = self->pFormatCtx->streams[streamIdx];
 
 		self->pCodecCtx = avcodec_alloc_context3(codec);
@@ -254,6 +256,13 @@ static PyObject* ffmpeg_decoder_read( ffmpegDecoderObject* self ){
 				return NULL;
 			}
 			break;
+		}
+
+		if( self->pkt->stream_index != self->streamIdx ){
+			/* Packet belongs to some other stream (e.g. an embedded
+			   cover art image) - don't feed it to the audio decoder. */
+			av_packet_unref(self->pkt);
+			continue;
 		}
 
 		if( avcodec_send_packet(self->pCodecCtx, self->pkt) < 0 ){
@@ -445,7 +454,18 @@ static PyObject* ffmpeg_resampler_resample( ffmpegResamplerObject* self, PyObjec
 	}
 
 	inlen = (int)PyBytes_Size(PyTuple_GetItem(in, 0));
-	innb  = inlen / av_get_bytes_per_sample(self->input_sample_format);
+	if( inplanes == 1 ){
+		/* Non-planar (interleaved) input: the single buffer holds all
+		   channels, so the frame count must divide out the channel
+		   count too - otherwise we tell swr_convert() there are twice
+		   as many frames as there really are for stereo interleaved
+		   input, which corrupts the resampled output. */
+		int in_channels = av_popcount64(self->input_channel_layout);
+		innb = inlen / (av_get_bytes_per_sample(self->input_sample_format) * in_channels);
+	}
+	else{
+		innb = inlen / av_get_bytes_per_sample(self->input_sample_format);
+	}
 
 	outnb = (int)av_rescale_rnd(
 		innb + swr_get_delay(self->pResampleCtx, self->input_rate),
