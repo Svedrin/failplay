@@ -28,7 +28,7 @@ FailPlay doesn't (and probably never will) have:
 Screenshots
 -----------
 
-![Screenshot](https://bitbucket.org/Svedrin/failplay/downloads/failplay.png).
+![Screenshot](failplay.png).
 
 FailAudio
 =========
