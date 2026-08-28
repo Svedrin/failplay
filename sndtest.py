@@ -1,6 +1,6 @@
 
 import sys
-import ao
+import ao_compat as ao
 
 pcm = ao.AudioDevice("pulse")
 

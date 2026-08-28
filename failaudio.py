@@ -26,7 +26,7 @@ from PyQt5 import Qt, QtCore
 from PyQt5.QtCore import pyqtSignal
 
 import audioop
-import ao
+import ao_compat as ao
 from myffmpeg.ffmpeg import Decoder
 import threading
 
