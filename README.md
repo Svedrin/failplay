@@ -48,7 +48,7 @@ Requirements
 Config
 ======
 
-FailPlay doesn't really need much configuration, but setting a bit of stuff in `~/.failplay/failplay.conf` does make life more convenient. Here's my config file:
+FailPlay doesn't really need much configuration, but setting a bit of stuff in `~/.failplay/failplay.conf` does make life more convenient. If `failplay` or `failblaster` start up with an empty playlist (e.g. on first run, before `~/.failplay/failplay.conf` exists), a console wizard asks for your music directory and a track to seed the playlist with (defaulting to a random one from that directory), then writes `~/.failplay/failplay.conf` accordingly so subsequent runs start with something to play. Here's my config file:
 
     [options]
     musicdir = /media/daten/Musik

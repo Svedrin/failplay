@@ -26,9 +26,7 @@ from PyQt5 import Qt, QtCore
 
 from failaudio import Playlist, Player
 from failweb import WebServer
-
-
-AUDIO_EXTENSIONS = {'.mp3', '.flac', '.ogg', '.opus', '.m4a', '.wav', '.aac', '.wma', '.ape', '.mpc'}
+from initwizard import AUDIO_EXTENSIONS, run_init_wizard
 
 
 def get_lib_entries(path, name_filter=""):
@@ -71,11 +69,11 @@ if __name__ == '__main__':
         help="Enable file uploads in the web interface. Must be <musicdir> itself or a directory within it.", default=None)
     options, posargs = parser.parse_args()
 
+    conf_path = os.path.join(os.environ["HOME"], ".failplay", "failplay.conf")
+    blaster_conf_path = os.path.join(os.environ["HOME"], ".failplay", "failblaster.conf")
+
     conf = ConfigParser()
-    conf.read([
-        os.path.join(os.environ["HOME"], ".failplay", "failplay.conf"),
-        os.path.join(os.environ["HOME"], ".failplay", "failblaster.conf"),
-    ])
+    conf.read([conf_path, blaster_conf_path])
 
     if conf.has_section("environment"):
         for key in conf.options("environment"):
@@ -102,6 +100,15 @@ if __name__ == '__main__':
             p.enqueue(filename)
         else:
             p.append(filename)
+
+    if len(p) == 0:
+        run_init_wizard(conf_path)
+        conf.read([conf_path, blaster_conf_path])
+
+        playlistfile = getconf("playlist")
+        if playlistfile:
+            print("Loading playlist from", playlistfile)
+            p.loadpls(playlistfile)
 
     app = QtCore.QCoreApplication([])
     player = Player(getconf("out", "pulse"), p)
