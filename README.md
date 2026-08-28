@@ -65,3 +65,17 @@ connect to a remote PulseAudio server. The `options` section accepts the same va
 command line as long options.
 
 FailAudio supports a config file as well, and evaluates `~/.failplay/failaudio.conf` in the same manner.
+
+Bluetooth speaker scripts
+=========================
+
+`bt_failaudio.sh`, `bt_failblaster.sh` and `bt_failplay.sh` watch for a bluetooth speaker to
+connect, route PulseAudio to it, and run `failaudio`/`failblaster`/`failplay` for as long as
+it stays connected. All three read their settings from `~/.failplay/bluetooth.conf`, a plain
+shell snippet that's sourced by the scripts. Minimal config:
+
+    BT_MAC="AA:BB:CC:DD:EE:FF"
+
+`BT_MAC` is required; find your device's address with `bluetoothctl devices`. `POLL_INTERVAL`
+(seconds between connection checks, default `10`) can also be set there, or overridden via the
+`POLL_INTERVAL` environment variable if the config file doesn't set it.
