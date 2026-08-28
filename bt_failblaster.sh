@@ -28,7 +28,6 @@ readonly FAILBLASTER="$SCRIPT_DIR/failblaster.py"
 readonly SINK_NAME="bluez_sink.${BT_MAC//:/_}.a2dp_sink"
 
 watchdog_pid=""
-failblaster_pid=""
 
 log() {
     printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -58,15 +57,17 @@ stop_watchdog() {
 }
 
 # Runs in the background while failblaster is in the foreground. Kills
-# failblaster as soon as the bluetooth device disappears.
+# failblaster as soon as the bluetooth device disappears. failblaster isn't
+# backgrounded, so we don't have its pid up front; find it by name instead.
 start_watchdog() {
     (
-        while kill -0 "$failblaster_pid" 2>/dev/null; do
+        while true; do
+            sleep "$POLL_INTERVAL"
+            pgrep -f "$FAILBLASTER" >/dev/null 2>&1 || exit 0
             if ! is_bt_connected; then
-                kill -TERM "$failblaster_pid" 2>/dev/null
+                pkill -TERM -f "$FAILBLASTER" 2>/dev/null
                 exit 0
             fi
-            sleep "$POLL_INTERVAL"
         done
     ) &
     watchdog_pid=$!
@@ -75,7 +76,7 @@ start_watchdog() {
 cleanup() {
     log "Caught signal, shutting down."
     stop_watchdog
-    [[ -n "$failblaster_pid" ]] && kill -TERM "$failblaster_pid" 2>/dev/null
+    pkill -TERM -f "$FAILBLASTER" 2>/dev/null
     exit 0
 }
 trap cleanup INT TERM
@@ -93,13 +94,8 @@ while true; do
         fi
 
         log "Starting failblaster -> $SINK_NAME"
-        "$FAILBLASTER" &
-        failblaster_pid=$!
-
         start_watchdog
-        wait "$failblaster_pid" 2>/dev/null
-        failblaster_pid=""
-
+        "$FAILBLASTER"
         stop_watchdog
         log "failblaster exited"
     else
