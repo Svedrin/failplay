@@ -95,3 +95,46 @@ Feature: MPRIS2 desktop integration
     And I call "Previous" on the DBus player interface
     Then the player should not have been stopped
     And the quit callback should not have been called
+
+  Scenario: OpenUri adds a library track that isn't in the playlist yet
+    Given a real DBus session bus is available
+    And a media library containing "New Song.mp3"
+    And an MPRIS interface for "FailPlay" with that library is registered
+    When I call OpenUri with the URI for library track "New Song.mp3"
+    Then the playlist should contain "New Song.mp3"
+    And "New Song.mp3" should not be queued
+
+  Scenario: OpenUri queues a library track that's already in the playlist
+    Given a real DBus session bus is available
+    And a media library containing "Existing Song.mp3"
+    And an MPRIS interface for "FailPlay" with that library is registered
+    And "Existing Song.mp3" is already in the playlist
+    When I call OpenUri with the URI for library track "Existing Song.mp3"
+    Then "Existing Song.mp3" should be queued
+
+  Scenario: OpenUri ignores a track outside the media library
+    Given a real DBus session bus is available
+    And a media library containing "Inside.mp3"
+    And an MPRIS interface for "FailPlay" with that library is registered
+    When I call OpenUri with the URI for a track outside the library named "Outside.mp3"
+    Then the playlist should not contain "Outside.mp3"
+
+  Scenario: OpenUri ignores a non-audio file inside the media library
+    Given a real DBus session bus is available
+    And a media library containing "cover.jpg"
+    And an MPRIS interface for "FailPlay" with that library is registered
+    When I call OpenUri with the URI for library track "cover.jpg"
+    Then the playlist should not contain "cover.jpg"
+
+  Scenario: OpenUri ignores a URI for a file that doesn't exist
+    Given a real DBus session bus is available
+    And an empty media library
+    And an MPRIS interface for "FailPlay" with that library is registered
+    When I call OpenUri with the URI for library track "Missing.mp3"
+    Then the playlist should not contain "Missing.mp3"
+
+  Scenario: OpenUri does nothing when no library is configured
+    Given a real DBus session bus is available
+    And an MPRIS interface for "FailPlay" is registered
+    When I call OpenUri with the URI for a track outside the library named "Track.mp3"
+    Then the playlist should not contain "Track.mp3"

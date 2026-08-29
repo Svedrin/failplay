@@ -21,12 +21,14 @@ import os
 import re
 import subprocess
 import time
+from pathlib import Path
 
 from behave import given, when, then
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtDBus import QDBusConnection
 
 import _helpers  # noqa: F401  (registers the "Quoted" parse type used below)
+from _helpers import create_track_file
 import mpris as mpris_module
 from mpris import MPRISInterface
 
@@ -53,8 +55,30 @@ class FakeSource:
         self.fd = type("FakeFd", (), {"metadata": tags})()
 
 
+class FakePlaylist:
+    """ Stands in for failaudio.Playlist: just the bits OpenUri touches. """
+
+    def __init__(self):
+        self.playlist = []
+        self.queue    = []
+
+    def __contains__(self, path):
+        return path in self.playlist
+
+    def append(self, path):
+        if path not in self.playlist:
+            self.playlist.append(path)
+
+    def enqueue(self, path):
+        if path not in self.playlist:
+            self.playlist.append(path)
+        if path not in self.queue:
+            self.queue.append(path)
+
+
 class FakePlayer(QObject):
-    """ Stands in for failaudio.Player: just the signals and .stop() MPRISInterface uses. """
+    """ Stands in for failaudio.Player: just the signals, .stop() and .playlist
+        MPRISInterface uses. """
 
     sig_position_normal  = pyqtSignal(object, object)
     sig_position_trans   = pyqtSignal(object, object, float, object, object)
@@ -64,6 +88,7 @@ class FakePlayer(QObject):
     def __init__(self):
         QObject.__init__(self)
         self.stop_called = False
+        self.playlist = FakePlaylist()
 
     def stop(self):
         self.stop_called = True
@@ -105,10 +130,23 @@ def _dbus_get_property(context, iface, prop):
     return match.group(1) if match.group(1) is not None else match.group(2)
 
 
-def _create_interface(context, identity):
+def _library_dir(context):
+    """ The media library root for this scenario: a subdirectory of context.tmpdir,
+        so a file created directly under context.tmpdir counts as "outside" it. """
+    if not hasattr(context, "librarydir"):
+        context.librarydir = os.path.join(context.tmpdir, "library")
+        os.makedirs(context.librarydir, exist_ok=True)
+    return context.librarydir
+
+
+def _file_uri(path):
+    return Path(path).resolve().as_uri()
+
+
+def _create_interface(context, identity, librarydir=None):
     player = FakePlayer()
     quit_calls = []
-    iface = MPRISInterface(identity, player, lambda: quit_calls.append(True))
+    iface = MPRISInterface(identity, player, lambda: quit_calls.append(True), librarydir=librarydir)
     context.add_cleanup(iface.close)
     context.mpris       = iface
     context.player       = player
@@ -156,6 +194,11 @@ def step_impl(context, identity):
     _create_interface(context, identity)
 
 
+@given(u'an MPRIS interface for "{identity}" with that library is registered')
+def step_impl(context, identity):
+    _create_interface(context, identity, librarydir=context.librarydir)
+
+
 @when(u'I create another MPRIS interface for "{identity}"')
 def step_impl(context, identity):
     # A second real instance would be a second OS process, with its own
@@ -179,6 +222,26 @@ def step_impl(context, identity):
         _create_interface(context, identity)
     finally:
         mpris_module.QDBusConnection = original
+
+
+# ── Given: media library / playlist setup for OpenUri ─────────────────────
+
+@given(u'a media library containing "{name:Quoted}"')
+def step_impl(context, name):
+    libdir = _library_dir(context)
+    path = os.path.join(libdir, name)
+    open(path, "wb").close()
+    context.tracks[name] = path
+
+
+@given(u'an empty media library')
+def step_impl(context):
+    _library_dir(context)
+
+
+@given(u'"{name:Quoted}" is already in the playlist')
+def step_impl(context, name):
+    context.player.playlist.append(context.tracks[name])
 
 
 # ── When: driving playback state ─────────────────────────────────────────
@@ -209,6 +272,25 @@ def step_impl(context, method):
 @when(u'I call "{method}" on the DBus root interface')
 def step_impl(context, method):
     _dbus_send(context, context.mpris.service_name, MPRIS_PATH, "%s.%s" % (IFACE_ROOT, method))
+
+
+@when(u'I call OpenUri with the URI for library track "{name:Quoted}"')
+def step_impl(context, name):
+    path = context.tracks.get(name) or os.path.join(_library_dir(context), name)
+    uri = _file_uri(path) if os.path.exists(path) else "file://" + path
+    _dbus_send(
+        context, context.mpris.service_name, MPRIS_PATH, "%s.OpenUri" % IFACE_PLAYER,
+        "string:%s" % uri,
+    )
+
+
+@when(u'I call OpenUri with the URI for a track outside the library named "{name:Quoted}"')
+def step_impl(context, name):
+    path = create_track_file(context, name)
+    _dbus_send(
+        context, context.mpris.service_name, MPRIS_PATH, "%s.OpenUri" % IFACE_PLAYER,
+        "string:%s" % _file_uri(path),
+    )
 
 
 # ── Then: interface activity/identity ────────────────────────────────────
@@ -278,3 +360,37 @@ def step_impl(context):
 @then(u'the quit callback should not have been called')
 def step_impl(context):
     assert not context.quit_calls, "Expected the quit callback not to have been called"
+
+
+# ── Then: OpenUri / playlist effects ─────────────────────────────────────
+
+@then(u'the playlist should contain "{name:Quoted}"')
+def step_impl(context, name):
+    path = context.tracks[name]
+    assert path in context.player.playlist.playlist, (
+        "Expected %r to be in the playlist, got %r" % (path, context.player.playlist.playlist)
+    )
+
+
+@then(u'the playlist should not contain "{name:Quoted}"')
+def step_impl(context, name):
+    path = context.tracks.get(name) or os.path.join(_library_dir(context), name)
+    assert path not in context.player.playlist.playlist, (
+        "Expected %r not to be in the playlist, got %r" % (path, context.player.playlist.playlist)
+    )
+
+
+@then(u'"{name:Quoted}" should be queued')
+def step_impl(context, name):
+    path = context.tracks[name]
+    assert path in context.player.playlist.queue, (
+        "Expected %r to be queued, got %r" % (path, context.player.playlist.queue)
+    )
+
+
+@then(u'"{name:Quoted}" should not be queued')
+def step_impl(context, name):
+    path = context.tracks[name]
+    assert path not in context.player.playlist.queue, (
+        "Expected %r not to be queued, got %r" % (path, context.player.playlist.queue)
+    )

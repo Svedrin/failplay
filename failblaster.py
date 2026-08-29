@@ -114,6 +114,8 @@ if __name__ == '__main__':
     app = QtCore.QCoreApplication([])
     player = Player(getconf("out", "pulse"), p)
 
+    musicdir = getconf("musicdir") or os.environ["HOME"]
+
     # Optional: expose an MPRIS2 interface over DBus so desktops (KDE's lock screen
     # media widget etc.) can show what's playing. Stop is the only control that
     # actually does anything - it exits failblaster, same as pressing Q. If DBus
@@ -123,12 +125,12 @@ if __name__ == '__main__':
     def mpris_request_stop():
         mpris_stop_requested[0] = True
 
-    mpris_iface = MPRISInterface("FailBlaster", player, mpris_request_stop)
+    mpris_iface = MPRISInterface("FailBlaster", player, mpris_request_stop, librarydir=musicdir)
 
     web_port = getconf("web")
     if web_port is not None:
         WebServer(
-            p, player, getconf("musicdir") or os.environ["HOME"], int(web_port),
+            p, player, musicdir, int(web_port),
             uploaddir=getconf("uploaddir"),
         ).start()
 
@@ -144,7 +146,7 @@ if __name__ == '__main__':
         pl_cursor = 0
 
         # Library state
-        lib_path = getconf("musicdir") or os.environ["HOME"]
+        lib_path = musicdir
         lib_filter = ""
         lib_filter_mode = False
         lib_entries = get_lib_entries(lib_path, lib_filter)

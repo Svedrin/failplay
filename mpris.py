@@ -17,10 +17,11 @@ Optional MPRIS2 (https://specifications.freedesktop.org/mpris-spec/latest/) supp
 FailPlay's whole design is "it plays until it's done, there's no pause/skip/seek", so
 most of the MPRIS control surface doesn't apply. We advertise that honestly: every
 Can* capability is False except CanControl and CanQuit, and Play/Pause/Next/Previous/
-Seek/SetPosition/OpenUri are accepted but ignored. The one control we actually wire up
-is Stop (and Quit), which exits the process - that's the whole point of this module,
-since it lets desktop shells (KDE's lock screen media widget, etc.) show what's
-currently playing and offer a working stop button.
+Seek/SetPosition are accepted but ignored. The two controls we actually wire up are
+Stop (and Quit), which exits the process, and OpenUri, which adds a known library
+track to the playlist (queueing it next if it's already there) - that's the whole
+point of this module, since it lets desktop shells (KDE's lock screen media widget,
+etc.) show what's currently playing and offer a working stop button.
 
 This is entirely optional: if the session bus isn't reachable (no DBus running, no
 display, whatever), MPRISInterface just leaves `.active` False and does nothing. Callers
@@ -28,6 +29,9 @@ don't need to check anything up front, and playback keeps working without it.
 """
 
 from pathlib import Path
+from urllib.parse import unquote, urlparse
+
+from initwizard import AUDIO_EXTENSIONS
 
 from PyQt5.QtCore import (
     QObject, pyqtProperty, pyqtSlot, Q_CLASSINFO, QVariant, QMetaType, QTimer,
@@ -222,9 +226,13 @@ class _PlayerAdaptor(QDBusAbstractAdaptor):
     def SetPosition(self, track_id, position_us):
         pass
 
+    # OpenUri is the other command that actually does something: it adds the
+    # track to the playlist (or queues it next, if already there) - see
+    # MPRISInterface.open_uri(). Anything it can't resolve to a library track
+    # is silently ignored, same as the no-ops above.
     @pyqtSlot(str)
     def OpenUri(self, uri):
-        pass
+        self.mpris.open_uri(uri)
 
     # Stop is the one command that actually does something: it exits the process.
     @pyqtSlot()
@@ -240,16 +248,19 @@ class MPRISInterface(QObject):
     the DBus service name org.mpris.MediaPlayer2.<identity>. `quit_callback` is called
     (in addition to Player.stop()) whenever an MPRIS client asks us to Stop or Quit -
     it's the caller's job to actually tear down the process/window from there.
+    `librarydir`, if given, is the root directory OpenUri will accept tracks from;
+    without it, OpenUri has nothing to check against and just ignores every call.
 
     If the session bus can't be reached, or QtDBus isn't available at all, this becomes
     an inert no-op: `.active` stays False and nothing else needs to check for that.
     """
 
-    def __init__(self, identity, player, quit_callback):
+    def __init__(self, identity, player, quit_callback, librarydir=None):
         QObject.__init__(self)
         self.identity      = identity
         self.player        = player
         self.quit_callback = quit_callback
+        self.librarydir    = librarydir
         self.active        = False
         self.bus           = None
 
@@ -360,6 +371,38 @@ class MPRISInterface(QObject):
 
     def _on_position_trans(self, prev, source, fac, prevdata, srcdata):
         self._source = source
+
+    def _resolve_library_track(self, uri):
+        """ Resolve a file:// URI to an absolute path inside `librarydir`, or None
+            if it doesn't name a real, existing, audio-looking track in there. """
+        if not self.librarydir:
+            return None
+        parsed = urlparse(uri)
+        if parsed.scheme != "file":
+            return None
+        try:
+            real = Path(unquote(parsed.path)).resolve(strict=True)
+            root = Path(self.librarydir).resolve()
+        except (OSError, ValueError):
+            return None
+        if real != root and root not in real.parents:
+            return None
+        if not real.is_file() or real.suffix.lower() not in AUDIO_EXTENSIONS:
+            return None
+        return str(real)
+
+    def open_uri(self, uri):
+        """ OpenUri: add a known library track to the playlist, queueing it next
+            if it's already in there. Anything else - outside the library, wrong
+            extension, doesn't exist - is silently ignored, like every other MPRIS
+            command this player can't really act on. """
+        path = self._resolve_library_track(uri)
+        if path is None:
+            return
+        if path in self.player.playlist:
+            self.player.playlist.enqueue(path)
+        else:
+            self.player.playlist.append(path)
 
     def request_quit(self):
         # Deferred by one event loop tick so QtDBus gets a chance to send the method

@@ -58,7 +58,7 @@ class FailPlay(Ui_MainWindow, QtWidgets.QMainWindow):
         # screen media widget etc.) can show what's playing. Stop is the only control
         # that actually does anything - it closes the window, same as pressing Q.
         # If DBus isn't reachable this quietly does nothing.
-        self.mpris = MPRISInterface("FailPlay", self.player, self.close)
+        self.mpris = MPRISInterface("FailPlay", self.player, self.close, librarydir=librarydir)
 
         self.setupUi(self)
 
