@@ -80,6 +80,19 @@ line as `--web` and `--uploaddir`.
 Both `failaudio` and `failblaster` load `~/.failplay/failplay.conf` and then load `~/.failplay/fail{audio,blaster}.conf`
 respectively, so that you can override certain settings while reusing most of them.
 
+`failplay` and `failblaster` can also be told to exit automatically if the PulseAudio sink they're
+playing through disappears (e.g. a Bluetooth speaker being unplugged), instead of continuing on
+whatever sink PulseAudio falls back to:
+
+    [options]
+    stop_on_sink_disconnect = True
+
+This is also available as `--stop-on-sink-disconnect` on the command line. It watches whichever
+sink `PULSE_SINK` names (see the `[environment]` section above), or PulseAudio's default sink if
+`PULSE_SINK` isn't set, and needs a session DBus with PulseAudio's `module-dbus-protocol` loaded;
+without one, it quietly does nothing, same as the MPRIS integration. When it does trigger, the
+process exits with code 69 (`EX_UNAVAILABLE`) so a wrapper script can tell the difference.
+
 Bluetooth speaker scripts
 =========================
 

@@ -153,39 +153,6 @@ def _create_interface(context, identity, librarydir=None):
     context.quit_calls   = quit_calls
 
 
-# ── Given: bus/module availability ───────────────────────────────────────
-
-@given(u'the DBus session bus is unreachable')
-def step_impl(context):
-    class _DisconnectedBus:
-        def isConnected(self):
-            return False
-
-    class _FakeQDBusConnection:
-        @staticmethod
-        def sessionBus():
-            return _DisconnectedBus()
-
-    original = mpris_module.QDBusConnection
-    mpris_module.QDBusConnection = _FakeQDBusConnection
-    context.add_cleanup(lambda: setattr(mpris_module, "QDBusConnection", original))
-
-
-@given(u'the QtDBus module is unavailable')
-def step_impl(context):
-    original = mpris_module.HAVE_QTDBUS
-    mpris_module.HAVE_QTDBUS = False
-    context.add_cleanup(lambda: setattr(mpris_module, "HAVE_QTDBUS", original))
-
-
-@given(u'a real DBus session bus is available')
-def step_impl(context):
-    assert os.environ.get("DBUS_SESSION_BUS_ADDRESS"), (
-        "No DBUS_SESSION_BUS_ADDRESS set - expected the @dbus tag hook in "
-        "environment.py to have started a private session bus for this feature."
-    )
-
-
 # ── Given/When: creating interfaces ───────────────────────────────────────
 
 @given(u'an MPRIS interface for "{identity}" is registered')

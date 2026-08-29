@@ -28,6 +28,7 @@ from failaudio import Playlist, Player
 from failweb import WebServer
 from initwizard import AUDIO_EXTENSIONS, run_init_wizard
 from mpris import MPRISInterface
+from sinkwatch import SinkWatchdog, EX_UNAVAILABLE
 
 
 def get_lib_entries(path, name_filter=""):
@@ -68,6 +69,10 @@ if __name__ == '__main__':
         help="Enable the web interface on the given port (e.g. --web 8080).", default=None)
     parser.add_option("--uploaddir", dest="uploaddir", metavar="DIR",
         help="Enable file uploads in the web interface. Must be <musicdir> itself or a directory within it.", default=None)
+    parser.add_option("--stop-on-sink-disconnect", dest="stop_on_sink_disconnect", action="store_true", default=None,
+        help="Exit automatically if the PulseAudio sink currently in use (PULSE_SINK, "
+             "or else PulseAudio's default) disappears, instead of continuing on "
+             "whatever sink PulseAudio falls back to. Requires DBus.")
     options, posargs = parser.parse_args()
 
     conf_path = os.path.join(os.environ["HOME"], ".failplay", "failplay.conf")
@@ -126,6 +131,20 @@ if __name__ == '__main__':
         mpris_stop_requested[0] = True
 
     mpris_iface = MPRISInterface("FailBlaster", player, mpris_request_stop, librarydir=musicdir)
+
+    # Optional: exit automatically if the sink we're playing through disappears
+    # (e.g. a Bluetooth speaker being unplugged), instead of continuing on
+    # whatever sink PulseAudio falls back to. If DBus isn't reachable, or the
+    # sink can't be found, this quietly does nothing, same as the MPRIS setup
+    # above.
+    exit_code = [0]
+    if getconf("stop_on_sink_disconnect") in (True, "True"):
+        sink_watchdog = SinkWatchdog(sink_name=os.environ.get("PULSE_SINK"))
+        if sink_watchdog.active:
+            def _on_sink_gone():
+                exit_code[0] = EX_UNAVAILABLE
+                mpris_stop_requested[0] = True
+            sink_watchdog.sig_sink_gone.connect(_on_sink_gone)
 
     web_port = getconf("web")
     if web_port is not None:
@@ -373,3 +392,7 @@ if __name__ == '__main__':
         if playlistfile:
             print("Saving playlist to", playlistfile)
             p.writepls(playlistfile)
+
+    if exit_code[0] == EX_UNAVAILABLE:
+        print("Sink disconnected, exiting.")
+    sys.exit(exit_code[0])

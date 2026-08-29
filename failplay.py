@@ -31,6 +31,7 @@ from ui_failplay import Ui_MainWindow
 from failweb     import WebServer
 from initwizard  import run_init_wizard
 from mpris       import MPRISInterface
+from sinkwatch   import SinkWatchdog, EX_UNAVAILABLE
 
 
 def mkIcon():
@@ -278,6 +279,10 @@ if __name__ == '__main__':
         help="Enable the web interface on the given port (e.g. --web 8080).", default=None)
     parser.add_option("--uploaddir", dest="uploaddir", metavar="DIR",
         help="Enable file uploads in the web interface. Must be <musicdir> itself or a directory within it.", default=None)
+    parser.add_option("--stop-on-sink-disconnect", dest="stop_on_sink_disconnect", action="store_true", default=None,
+        help="Exit automatically if the PulseAudio sink currently in use (PULSE_SINK, "
+             "or else PulseAudio's default) disappears, instead of continuing on "
+             "whatever sink PulseAudio falls back to. Requires DBus.")
     options, posargs = parser.parse_args()
 
     conf_path = os.path.join(os.environ["HOME"], ".failplay", "failplay.conf")
@@ -331,6 +336,17 @@ if __name__ == '__main__':
             uploaddir=getconf("uploaddir"),
         ).start()
 
+    exit_code = 0
+    if getconf("stop_on_sink_disconnect") in (True, "True"):
+        sink_watchdog = SinkWatchdog(sink_name=os.environ.get("PULSE_SINK"))
+        if sink_watchdog.active:
+            def _on_sink_gone():
+                global exit_code
+                exit_code = EX_UNAVAILABLE
+                print("Sink disconnected, exiting.")
+                ply.close()
+            sink_watchdog.sig_sink_gone.connect(_on_sink_gone)
+
     ply.show()
     ply.start()
 
@@ -340,3 +356,5 @@ if __name__ == '__main__':
     if playlistfile:
         print("Saving playlist to", playlistfile)
         ply.playlist.writepls(playlistfile)
+
+    sys.exit(exit_code)
