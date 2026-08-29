@@ -2,10 +2,12 @@
 #
 # Watches for the "Logitech BT Adapter" bluetooth speaker. Whenever it's
 # available, connects to it, routes PulseAudio to it and runs failblaster
-# in the foreground so its curses TUI is usable from this terminal.
-# A background watchdog kills failblaster if the device disconnects while
-# it's running; once failblaster exits (by quitting or being killed), the
-# script goes back to waiting for the device.
+# in the foreground (with --stop-on-sink-disconnect, so it exits itself as
+# soon as PulseAudio's DBus interface reports the sink gone) so its curses
+# TUI is usable from this terminal. A background watchdog polling
+# bluetoothctl is kept as a fallback in case DBus isn't available; once
+# failblaster exits (by quitting or being killed), the script goes back to
+# waiting for the device.
 #
 # Intended to be run inside a long-lived tmux session, e.g.:
 #   tmux new -s failblaster-bt ./bt_failblaster.sh
@@ -95,7 +97,7 @@ while true; do
 
         log "Starting failblaster -> $SINK_NAME"
         start_watchdog
-        "$FAILBLASTER"
+        "$FAILBLASTER" --stop-on-sink-disconnect
         stop_watchdog
         log "failblaster exited"
     else

@@ -2,9 +2,11 @@
 #
 # Watches for the "Logitech BT Adapter" bluetooth speaker. Whenever it's
 # available, connects to it, routes PulseAudio to it and runs the failplay
-# GUI in the foreground. A background watchdog kills failplay if the device
-# disconnects while it's running; once failplay exits (by quitting or being
-# killed), the script goes back to waiting for the device.
+# GUI in the foreground with --stop-on-sink-disconnect, so it exits itself
+# as soon as PulseAudio's DBus interface reports the sink gone. A background
+# watchdog polling bluetoothctl is kept as a fallback in case DBus isn't
+# available; once failplay exits (by quitting or being killed), the script
+# goes back to waiting for the device.
 #
 # Intended to be run inside a long-lived tmux session, e.g.:
 #   tmux new -s failplay-bt ./bt_failplay.sh
@@ -92,7 +94,7 @@ while true; do
         fi
 
         log "Starting failplay -> $SINK_NAME"
-        "$FAILPLAY" &
+        "$FAILPLAY" --stop-on-sink-disconnect &
         failplay_pid=$!
 
         start_watchdog
