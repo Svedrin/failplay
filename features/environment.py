@@ -10,6 +10,7 @@ display needed in CI / sandboxes).
 
 import os
 import shutil
+import subprocess
 import tempfile
 import time
 
@@ -23,6 +24,8 @@ from PyQt5.QtWidgets import QApplication
 from _helpers import pump_qt_events  # noqa: F401  (re-exported for steps that import it from here)
 
 _qapp = None
+_dbus_proc = None
+_dbus_old_addr = None
 
 
 def before_all(context):
@@ -55,3 +58,40 @@ def after_scenario(context, scenario):
     shutil.rmtree(context.tmpdir, ignore_errors=True)
     for extra_tmpdir in context.extra_tmpdirs:
         shutil.rmtree(extra_tmpdir, ignore_errors=True)
+
+
+def before_tag(context, tag):
+    # mpris.feature is tagged @dbus at the feature level (not per-scenario): PyQt
+    # caches the outcome of the first-ever QDBusConnection.sessionBus() call for
+    # the life of the process, so the private bus has to exist before *any*
+    # scenario in the feature gets a chance to establish that connection as
+    # "disconnected" - which would poison every later scenario too.
+    global _dbus_proc, _dbus_old_addr
+    if tag == "dbus" and _dbus_proc is None:
+        proc = subprocess.Popen(
+            ["dbus-daemon", "--session", "--print-address", "--print-pid", "--nofork"],
+            stdout=subprocess.PIPE, text=True,
+        )
+        addr = proc.stdout.readline().strip()
+        if not addr:
+            proc.terminate()
+            raise RuntimeError("dbus-daemon did not print a session bus address")
+        _dbus_old_addr = os.environ.get("DBUS_SESSION_BUS_ADDRESS")
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = addr
+        _dbus_proc = proc
+
+
+def after_tag(context, tag):
+    global _dbus_proc, _dbus_old_addr
+    if tag == "dbus" and _dbus_proc is not None:
+        _dbus_proc.terminate()
+        try:
+            _dbus_proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            _dbus_proc.kill()
+        _dbus_proc = None
+        if _dbus_old_addr is None:
+            os.environ.pop("DBUS_SESSION_BUS_ADDRESS", None)
+        else:
+            os.environ["DBUS_SESSION_BUS_ADDRESS"] = _dbus_old_addr
+        _dbus_old_addr = None

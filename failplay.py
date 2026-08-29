@@ -30,6 +30,7 @@ from failaudio   import Playlist, Player
 from ui_failplay import Ui_MainWindow
 from failweb     import WebServer
 from initwizard  import run_init_wizard
+from mpris       import MPRISInterface
 
 
 def mkIcon():
@@ -52,6 +53,12 @@ class FailPlay(Ui_MainWindow, QtWidgets.QMainWindow):
 
         self.playlist = Playlist()
         self.player   = Player(outdev, self.playlist)
+
+        # Optional: expose an MPRIS2 interface over DBus so desktops (KDE's lock
+        # screen media widget etc.) can show what's playing. Stop is the only control
+        # that actually does anything - it closes the window, same as pressing Q.
+        # If DBus isn't reachable this quietly does nothing.
+        self.mpris = MPRISInterface("FailPlay", self.player, self.close)
 
         self.setupUi(self)
 

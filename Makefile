@@ -8,6 +8,7 @@ dep:
 		python3-dev \
 		python3-setuptools \
 		python3-pyqt5 \
+		python3-pyqt5.qtdbus \
 		pyqt5-dev-tools \
 		python3-pyao \
 		libao-dev \
@@ -16,7 +17,9 @@ dep:
 		libavutil-dev \
 		libswresample-dev \
 		python3-behave \
-		python3-requests
+		python3-requests \
+		dbus-daemon \
+		dbus-bin
 
 test: all
 	QT_QPA_PLATFORM=offscreen behave

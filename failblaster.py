@@ -27,6 +27,7 @@ from PyQt5 import Qt, QtCore
 from failaudio import Playlist, Player
 from failweb import WebServer
 from initwizard import AUDIO_EXTENSIONS, run_init_wizard
+from mpris import MPRISInterface
 
 
 def get_lib_entries(path, name_filter=""):
@@ -113,6 +114,17 @@ if __name__ == '__main__':
     app = QtCore.QCoreApplication([])
     player = Player(getconf("out", "pulse"), p)
 
+    # Optional: expose an MPRIS2 interface over DBus so desktops (KDE's lock screen
+    # media widget etc.) can show what's playing. Stop is the only control that
+    # actually does anything - it exits failblaster, same as pressing Q. If DBus
+    # isn't reachable this quietly does nothing.
+    mpris_stop_requested = [False]
+
+    def mpris_request_stop():
+        mpris_stop_requested[0] = True
+
+    mpris_iface = MPRISInterface("FailBlaster", player, mpris_request_stop)
+
     web_port = getconf("web")
     if web_port is not None:
         WebServer(
@@ -142,6 +154,8 @@ if __name__ == '__main__':
 
         while True:
             app.processEvents()
+            if mpris_stop_requested[0]:
+                break
             stdscr.clear()
 
             maxy, maxx = stdscr.getmaxyx()
