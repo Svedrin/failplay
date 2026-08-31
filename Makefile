@@ -8,7 +8,6 @@ dep:
 		python3-dev \
 		python3-setuptools \
 		python3-pyqt5 \
-		python3-pyqt5.qtdbus \
 		pyqt5-dev-tools \
 		python3-pyao \
 		libao-dev \
