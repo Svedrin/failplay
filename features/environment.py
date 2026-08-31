@@ -68,8 +68,16 @@ def before_tag(context, tag):
     # "disconnected" - which would poison every later scenario too.
     global _dbus_proc, _dbus_old_addr
     if tag == "dbus" and _dbus_proc is None:
+        # --print-address=1/--print-pid=1 (fd 1 = stdout) rather than the bare
+        # "--print-address --print-pid" flags: dbus-daemon on Debian bookworm
+        # (1.14.10) parses a bare --print-address by greedily consuming
+        # whatever token follows as its descriptor, even if that token is
+        # itself a flag like "--print-pid" - which then eats "--nofork" the
+        # same way, and printing fails with `Invalid file descriptor:
+        # "--print-pid"`. Attaching the descriptor with "=" sidesteps that
+        # parser bug on every dbus-daemon version.
         proc = subprocess.Popen(
-            ["dbus-daemon", "--session", "--print-address", "--print-pid", "--nofork"],
+            ["dbus-daemon", "--session", "--print-address=1", "--print-pid=1", "--nofork"],
             stdout=subprocess.PIPE, text=True,
         )
         addr = proc.stdout.readline().strip()
