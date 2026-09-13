@@ -14,6 +14,9 @@
 import json
 import mimetypes
 import os
+import shutil
+import socket
+import subprocess
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs, unquote
@@ -1025,7 +1028,36 @@ class WebServer:
 
     def start(self):
         self._thread.start()
-        print(f"Web interface: http://localhost:{self.port}/")
+        url = f"http://{self._lan_ip()}:{self.port}/"
+        print(f"Web interface: {url}")
+        self._print_qr(url)
+
+    @staticmethod
+    def _lan_ip():
+        """
+        Best-effort guess at an IP address other devices on the LAN can use to
+        reach this host (for the startup QR code). Doesn't actually send
+        anything -- UDP sockets pick a route (and thus a local address) on
+        connect() without a handshake -- and falls back to localhost if the
+        host has no route to the outside (e.g. no network at all).
+        """
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                sock.connect(("8.8.8.8", 80))
+                return sock.getsockname()[0]
+        except OSError:
+            return "localhost"
+
+    @staticmethod
+    def _print_qr(url):
+        """Print a scannable QR code for `url` to the terminal, if qrencode is installed."""
+        if not shutil.which("qrencode"):
+            print("[web] install `qrencode` to get a scannable QR code here")
+            return
+        try:
+            subprocess.run(["qrencode", "-t", "ANSIUTF8", "-m", "1", url], check=True)
+        except (OSError, subprocess.CalledProcessError) as exc:
+            print(f"[web] failed to render QR code: {exc}")
 
     # ── Qt-thread helpers ─────────────────────────────────────────────────────
 

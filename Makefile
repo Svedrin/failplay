@@ -19,7 +19,8 @@ dep:
 		python3-requests \
 		dbus-daemon \
 		dbus-bin \
-		emscripten
+		emscripten \
+		qrencode
 
 test: all
 	QT_QPA_PLATFORM=offscreen behave

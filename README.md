@@ -77,6 +77,9 @@ Both FailPlay and `failblaster` can also expose a web interface by adding `web` 
 uploading files through the web interface and is optional. Both can also be given on the command
 line as `--web` and `--uploaddir`.
 
+When the web interface starts, its URL is also printed as a QR code so you can pull it up on your
+phone without typing it in, provided `qrencode` is installed.
+
 Both `failaudio` and `failblaster` load `~/.failplay/failplay.conf` and then load `~/.failplay/fail{audio,blaster}.conf`
 respectively, so that you can override certain settings while reusing most of them.
 
