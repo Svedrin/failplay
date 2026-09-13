@@ -1,5 +1,5 @@
 
-all: ui_failplay.py myffmpeg/_ffmpeg.cpython-312-x86_64-linux-gnu.so
+all: ui_failplay.py myffmpeg/_ffmpeg.cpython-312-x86_64-linux-gnu.so webfft/fft.wasm
 
 dep:
 	sudo apt-get update
@@ -18,7 +18,8 @@ dep:
 		python3-behave \
 		python3-requests \
 		dbus-daemon \
-		dbus-bin
+		dbus-bin \
+		emscripten
 
 test: all
 	QT_QPA_PLATFORM=offscreen behave
@@ -28,4 +29,11 @@ ui_failplay.py: failplay.ui
 
 myffmpeg/_ffmpeg.cpython-312-x86_64-linux-gnu.so: myffmpeg/ffmpegmodule.c
 	cd myffmpeg && python3 setup.py build_ext --inplace
+
+# Standalone wasm module (no Emscripten JS runtime) used by the mobile web UI
+# to render the FFT client-side. See webfft/fft.c for the exported ABI.
+webfft/fft.wasm: webfft/fft.c
+	emcc -O2 --target=wasm32 -nostdlib -Wl,--no-entry -Wl,--strip-all \
+		-Wl,--allow-undefined -mbulk-memory \
+		-o $@ $^
 

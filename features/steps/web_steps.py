@@ -49,7 +49,13 @@ def _start_web_server(context, uploaddir=None):
     port = sock.getsockname()[1]
     sock.close()
 
-    fake_player = SimpleNamespace(sig_started=SimpleNamespace(connect=lambda *a, **k: None))
+    _noop_signal = lambda: SimpleNamespace(connect=lambda *a, **k: None)
+    fake_player = SimpleNamespace(
+        sig_started=_noop_signal(),
+        sig_position_normal=_noop_signal(),
+        sig_position_trans=_noop_signal(),
+        sig_stopped=_noop_signal(),
+    )
     context.webserver = WebServer(context.playlist, fake_player, context.tmpdir, port, uploaddir=uploaddir)
     context.webserver.start()
     context.base_url = "http://127.0.0.1:%d" % port
