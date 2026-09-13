@@ -449,20 +449,22 @@ function App() {
     let _visBuffer   = null;        // decoded AudioBuffer for _visPath, once ready
     let _visGen      = 0;           // invalidates in-flight decodes when the track changes
     let _posAnchorAt = 0;           // performance.now() when `now.position` was last received
+    let _searchDebounce = null;     // timer id for the debounced recursive library search
 
     return {
 
         // ── state (x-data) ────────────────────────────
-        playlist:        [],
-        library:         [],
-        libPath:         '',
-        libStack:        [],
-        libraryRootName: '',
-        uploadsEnabled:  false,
-        fftEnabled:      false,
-        now:             null,   // {path, artist, title, position, duration} | null
-        searchQuery:     '',
-        tab:             'playlist',
+        playlist:            [],
+        library:             [],
+        librarySearchResults: [],   // flattened recursive-search matches (library tab only)
+        libPath:             '',
+        libStack:            [],
+        libraryRootName:     '',
+        uploadsEnabled:      false,
+        fftEnabled:          false,
+        now:                 null,   // {path, artist, title, position, duration} | null
+        searchQuery:         '',
+        tab:                 'playlist',
 
         // ── lifecycle (x-init) ────────────────────────
         init() {
@@ -490,7 +492,10 @@ function App() {
                     ev.target.value = '';
                 });
             const searchInput = document.getElementById('search-input');
-            searchInput.addEventListener('input', ev => { this.searchQuery = ev.target.value; });
+            searchInput.addEventListener('input', ev => {
+                this.searchQuery = ev.target.value;
+                this._scheduleLibrarySearch();
+            });
 
             // On-screen keyboard: while the search box is focused, hide the
             // now-playing/FFT panel (body.kbd-open in the stylesheet) and
@@ -568,6 +573,32 @@ function App() {
                 .then(entries => {
                     this.library = entries;   // triggers render
                     this.libPath = path;
+                    // A search already in progress is scoped to a libPath;
+                    // re-run it under the new one so it keeps matching what's
+                    // on screen (e.g. after a breadcrumb click).
+                    this._scheduleLibrarySearch();
+                });
+        },
+
+        // Recursive library search: descends into every subfolder of the
+        // current directory so matches don't require manually expanding
+        // folders first. Debounced so we don't walk the filesystem on every
+        // keystroke, and re-fetches from scratch on each call rather than
+        // filtering client-side, since the whole point is to reach files the
+        // client was never sent.
+        _scheduleLibrarySearch() {
+            clearTimeout(_searchDebounce);
+            const q = this.searchQuery.trim();
+            if (!q) { this.librarySearchResults = []; return; }
+            _searchDebounce = setTimeout(() => this._runLibrarySearch(q), 200);
+        },
+
+        _runLibrarySearch(q) {
+            fetch('/api/library/search?path=' + encodeURIComponent(this.libPath) + '&q=' + encodeURIComponent(q))
+                .then(r => r.json())
+                .then(results => {
+                    // Discard stale responses from a query the user has since changed.
+                    if (this.searchQuery.trim() === q) this.librarySearchResults = results;
                 });
         },
 
@@ -587,6 +618,8 @@ function App() {
             // query over to the other tab would silently filter it by a term
             // that was never meant for it, so start fresh on every switch.
             this.searchQuery = '';
+            this.librarySearchResults = [];
+            clearTimeout(_searchDebounce);
             document.getElementById('search-input').value = '';
         },
 
@@ -882,11 +915,14 @@ ${t.queue_pos ? `<span class="qpos" title="Queue position">${t.queue_pos}</span>
 
             document.getElementById('btn-upload').style.display = this.uploadsEnabled ? '' : 'none';
 
-            const q = this.searchQuery.trim().toLowerCase();
-            _libRows = q ? this.library.filter(e => e.name.toLowerCase().includes(q)) : this.library;
+            const q = this.searchQuery.trim();
+            _libRows = q ? this.librarySearchResults : this.library;
             document.getElementById('lib-entries').innerHTML =
                 _libRows.map((e, i) =>
-                    `<div class="lib-entry ${e.is_dir ? 'dir' : 'file'}" data-idx="${i}">${esc(e.name)}</div>`
+                    // While searching, entries come from every depth below the
+                    // current folder, so show the relative path (not just the
+                    // bare filename) to disambiguate same-named tracks.
+                    `<div class="lib-entry ${e.is_dir ? 'dir' : 'file'}" data-idx="${i}">${esc(q ? e.rel : e.name)}</div>`
                 ).join('');
         },
     };
@@ -1077,6 +1113,27 @@ class WebServer:
             pass
         return entries
 
+    def _search_library(self, dirpath, query):
+        """Recursively search dirpath for audio files whose path relative to
+        dirpath (directory names included) contains query. Matching against
+        the whole relative path -- not just the filename -- lets a query like
+        an artist or album name surface everything in that folder even when
+        the individual track names don't contain it."""
+        query = query.strip().lower()
+        if not query:
+            return []
+        matches = []
+        for root, dirs, files in os.walk(dirpath):
+            dirs.sort(key=str.lower)
+            for name in sorted(files, key=str.lower):
+                if os.path.splitext(name)[1].lower() not in AUDIO_EXTENSIONS:
+                    continue
+                full = os.path.join(root, name)
+                rel = os.path.relpath(full, dirpath)
+                if query in rel.lower():
+                    matches.append({'name': name, 'path': full, 'is_dir': False, 'rel': rel})
+        return matches
+
     def _resolve_path(self, rel):
         """Resolve a client-supplied library-relative (or absolute) path,
         guarding against traversal outside librarydir. Returns the absolute
@@ -1124,6 +1181,18 @@ class WebServer:
                         return
 
                     self._json(server._get_library(fullpath))
+
+                elif parsed.path == '/api/library/search':
+                    qs       = parse_qs(parsed.query)
+                    rel      = unquote(qs.get('path', [''])[0])
+                    query    = unquote(qs.get('q', [''])[0])
+                    fullpath = server._resolve_path(rel)
+
+                    if fullpath is None:
+                        self.send_error(403)
+                        return
+
+                    self._json(server._search_library(fullpath, query))
 
                 elif parsed.path == '/api/stream':
                     qs       = parse_qs(parsed.query)
