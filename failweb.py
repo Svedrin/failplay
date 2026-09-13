@@ -303,6 +303,17 @@ body { display: flex; flex-direction: column; }
   #bottom-bar   { display: flex; }
 }
 
+/* ── on-screen keyboard open (mobile only) ───────────────
+   The search box is the only text input on this page, so focusing it is
+   an exact signal that the keyboard is up. Hide the now-playing/FFT panel
+   and bottom bar so #main (the list) can grow into that space -- see the
+   body.kbd-open height handling in the script below for why this also
+   stops the list from being scrolled out of view. */
+body.kbd-open #now-panel,
+body.kbd-open #bottom-bar {
+  display: none;
+}
+
 /* ── buttons ─────────────────────────────────────────── */
 button {
   background: none;
@@ -478,8 +489,33 @@ function App() {
                     this.uploadFiles(ev.target.files);
                     ev.target.value = '';
                 });
-            document.getElementById('search-input')
-                .addEventListener('input', ev => { this.searchQuery = ev.target.value; });
+            const searchInput = document.getElementById('search-input');
+            searchInput.addEventListener('input', ev => { this.searchQuery = ev.target.value; });
+
+            // On-screen keyboard: while the search box is focused, hide the
+            // now-playing/FFT panel (body.kbd-open in the stylesheet) and
+            // shrink the page to the actual visible viewport instead of the
+            // full layout viewport. Without that second part, iOS in
+            // particular leaves the layout viewport at full height and
+            // scrolls the whole page up to keep the input visible above the
+            // keyboard -- taking the list with it. Sizing the body to match
+            // visualViewport removes the need for that scroll entirely.
+            const vv = window.visualViewport;
+            const applyViewportHeight = () => {
+                document.body.style.height =
+                    (vv && document.body.classList.contains('kbd-open')) ? vv.height + 'px' : '';
+            };
+            searchInput.addEventListener('focus', () => {
+                document.body.classList.add('kbd-open');
+                applyViewportHeight();
+            });
+            searchInput.addEventListener('blur', () => {
+                document.body.classList.remove('kbd-open');
+                applyViewportHeight();
+                window.scrollTo(0, 0);
+            });
+            if (vv) vv.addEventListener('resize', applyViewportHeight);
+
             document.getElementById('btn-nav-back')
                 .addEventListener('click', () => this.navBack());
             document.getElementById('btn-stop-now')
