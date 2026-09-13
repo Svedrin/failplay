@@ -547,6 +547,11 @@ function App() {
 
         switchTab(name) {
             this.tab = name;
+            // The search box filters whichever list is on screen; carrying a
+            // query over to the other tab would silently filter it by a term
+            // that was never meant for it, so start fresh on every switch.
+            this.searchQuery = '';
+            document.getElementById('search-input').value = '';
         },
 
         navigateRoot() {
