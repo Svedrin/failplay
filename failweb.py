@@ -865,6 +865,26 @@ function App() {
                 ctx.fillRect(0, row * (rh + rowGap), w, rh);
             }
 
+            // A track is selected but its audio hasn't been fetched/decoded
+            // (or the wasm module isn't ready) yet -- there's no FFT data to
+            // show, so sweep a "loading" marquee across the middle row
+            // instead of just leaving the grid dark.
+            if (this.now && this.now.path && (!_wasm || !_visBuffer)) {
+                const row = Math.floor(rows / 2);
+                const y = h - (row + 1) * rh - row * rowGap;
+                const [lr, lg, lb] = _visColor(0.15);
+                const period = 4, speed = 5;
+                const shift = Math.floor(performance.now() / 1000 * speed);
+                for (let i = 0; i < n; i++) {
+                    const x = i * (bw + gap);
+                    if ((i + shift) % period === 0) {
+                        ctx.fillStyle = `rgb(${lr | 0},${lg | 0},${lb | 0})`;
+                        ctx.fillRect(x, y, bw, rh);
+                    }
+                }
+                return;
+            }
+
             for (let i = 0; i < n; i++) {
                 const x   = i * (bw + gap);
                 const lit = Math.round(_visLevels[i] * rows);
