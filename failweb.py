@@ -454,6 +454,43 @@ function App() {
     let _posAnchorAt = 0;           // performance.now() when `now.position` was last received
     let _searchDebounce = null;     // timer id for the debounced recursive library search
 
+    // Smoothed bar levels + peak-hold dots for the FFT visualizer, carried
+    // across animation frames so the display doesn't just jitter with the
+    // raw per-frame magnitudes -- same idea as ledviz.py's _absorb().
+    const N_BARS       = 32;
+    const VIS_ATTACK   = 0.55;    // fraction of gap closed per frame on the way up
+    const VIS_DECAY    = 0.035;   // level drop per frame on the way down
+    const PEAK_HOLD    = 40;      // frames before a peak dot starts falling
+    const PEAK_DROP    = 0.02;    // peak drop per frame after hold expires
+    let _visLevels = new Array(N_BARS).fill(0);
+    let _visPeaks  = new Array(N_BARS).fill(0);
+    let _visPHold  = new Array(N_BARS).fill(0);
+
+    // Color gradient keypoints (bottom=0 … top=1): (pos, r, g, b) -- lifted
+    // straight from the desktop LED visualizer (ledviz.py) so both UIs share
+    // the same look.
+    const VIS_STOPS = [
+        [0.00,   0, 215, 178],   // deep cyan-turquoise
+        [0.30,   0, 155, 255],   // sky-blue
+        [0.56, 115,   0, 255],   // blue-violet
+        [0.76, 215,   0, 205],   // violet
+        [0.88, 255,   0, 158],   // magenta
+        [1.00, 255, 170, 215],   // warm white-pink
+    ];
+
+    function _visColor(t) {
+        for (let i = 0; i < VIS_STOPS.length - 1; i++) {
+            const [t0, r0, g0, b0] = VIS_STOPS[i];
+            const [t1, r1, g1, b1] = VIS_STOPS[i + 1];
+            if (t <= t1) {
+                const f = (t - t0) / Math.max(1e-9, t1 - t0);
+                return [r0 + f * (r1 - r0), g0 + f * (g1 - g0), b0 + f * (b1 - b0)];
+            }
+        }
+        const last = VIS_STOPS[VIS_STOPS.length - 1];
+        return [last[1], last[2], last[3]];
+    }
+
     return {
 
         // ── state (x-data) ────────────────────────────
@@ -747,7 +784,6 @@ function App() {
         },
 
         _fftBars(position) {
-            const N_BARS = 32;
             if (!_wasm || !_visBuffer) return new Array(N_BARS).fill(0);
 
             const buf  = _visBuffer;
@@ -785,7 +821,27 @@ function App() {
             return bars;
         },
 
-        _drawFft(bars) {
+        // Attack/decay smoothing + peak-hold, applied in place to _visLevels
+        // and _visPeaks -- see ledviz.py's _absorb() for the desktop twin.
+        _updateVisState(raw) {
+            for (let i = 0; i < N_BARS; i++) {
+                const v = raw[i];
+                _visLevels[i] = v > _visLevels[i]
+                    ? _visLevels[i] + (v - _visLevels[i]) * VIS_ATTACK
+                    : Math.max(0, _visLevels[i] - VIS_DECAY);
+
+                if (v > _visPeaks[i]) {
+                    _visPeaks[i] = v;
+                    _visPHold[i] = PEAK_HOLD;
+                } else if (_visPHold[i] > 0) {
+                    _visPHold[i]--;
+                } else {
+                    _visPeaks[i] = Math.max(0, _visPeaks[i] - PEAK_DROP);
+                }
+            }
+        },
+
+        _drawFft() {
             const canvas = document.getElementById('now-fft');
             const dpr = window.devicePixelRatio || 1;
             const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -796,13 +852,38 @@ function App() {
             }
             const ctx = canvas.getContext('2d');
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            ctx.clearRect(0, 0, w, h);
-            ctx.fillStyle = '#8a8a8a';
-            const n = bars.length, gap = 3;
+            ctx.fillStyle = '#0a0e16';
+            ctx.fillRect(0, 0, w, h);
+
+            const n = N_BARS, gap = 2, rows = 14, rowGap = 1;
             const bw = (w - gap * (n - 1)) / n;
+            const rh = (h - rowGap * (rows - 1)) / rows;
+
+            // Faint scanlines for an LED-matrix feel.
+            ctx.fillStyle = 'rgba(255,255,255,0.03)';
+            for (let row = 0; row < rows; row++) {
+                ctx.fillRect(0, row * (rh + rowGap), w, rh);
+            }
+
             for (let i = 0; i < n; i++) {
-                const bh = Math.max(2, bars[i] * h);
-                ctx.fillRect(i * (bw + gap), h - bh, bw, bh);
+                const x   = i * (bw + gap);
+                const lit = Math.round(_visLevels[i] * rows);
+
+                for (let row = 0; row < lit; row++) {
+                    const t = row / Math.max(1, rows - 1);
+                    const [r, g, b] = _visColor(t);
+                    const y = h - (row + 1) * rh - row * rowGap;
+                    ctx.fillStyle = `rgb(${r | 0},${g | 0},${b | 0})`;
+                    ctx.fillRect(x, y, bw, rh);
+                }
+
+                if (_visPeaks[i] > 0.02) {
+                    const pkRow = Math.min(rows - 1, Math.round(_visPeaks[i] * rows));
+                    const [r, g, b] = _visColor(pkRow / Math.max(1, rows - 1));
+                    const y = h - (pkRow + 1) * rh - pkRow * rowGap;
+                    ctx.fillStyle = `rgb(${Math.min(255, r + 60) | 0},${Math.min(255, g + 60) | 0},${Math.min(255, b + 60) | 0})`;
+                    ctx.fillRect(x, y, bw, rh);
+                }
             }
         },
 
@@ -815,7 +896,8 @@ function App() {
                 document.getElementById('now-title').textContent     = '—';
                 document.getElementById('now-elapsed').textContent   = '0:00';
                 document.getElementById('now-remaining').textContent = '-0:00';
-                this._drawFft(new Array(32).fill(0));
+                this._updateVisState(new Array(N_BARS).fill(0));
+                this._drawFft();
                 return;
             }
 
@@ -827,7 +909,8 @@ function App() {
             document.getElementById('now-title').textContent     = n.title  || '—';
             document.getElementById('now-elapsed').textContent   = fmtTime(position);
             document.getElementById('now-remaining').textContent = '-' + fmtTime((n.duration || 0) - position);
-            this._drawFft(this._fftBars(position));
+            this._updateVisState(this._fftBars(position));
+            this._drawFft();
         },
 
         // ── event delegation (keeps render() output clean) ─
